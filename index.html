@@ -206,6 +206,39 @@ nav button .icon { font-size: 22px; }
 }
 .streak-banner .num { font-size: 48px; font-weight: 800; }
 .streak-banner .lbl { font-size: 14px; opacity: .8; }
+
+/* ---- QUESTS ---- */
+.quest-card {
+  background: var(--card); border-radius: var(--radius); padding: 16px;
+  display: flex; align-items: flex-start; gap: 14px;
+  cursor: pointer; border: 1px solid #ffffff10; transition: transform .15s;
+}
+.quest-card:active { transform: scale(.98); }
+.quest-card .quest-emoji { font-size: 32px; flex-shrink: 0; }
+.quest-card .quest-info .quest-title { font-weight: 600; font-size: 15px; }
+.quest-card .quest-info .quest-subtitle { font-size: 13px; color: var(--text2); margin-top: 3px; }
+.quest-card .quest-info .quest-tags { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.quest-tag {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  background: #ffffff10; color: var(--text2);
+}
+.quest-tag.walk { background: #4ade8020; color: var(--green); }
+.quest-tag.time { background: #fb923c20; color: var(--orange); }
+
+.quest-header {
+  background: var(--card); border-radius: var(--radius); padding: 20px;
+  margin-bottom: 16px; border: 1px solid #ffffff10;
+}
+.quest-header .q-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.quest-header .q-desc { font-size: 14px; color: var(--text2); line-height: 1.5; }
+.quest-header .q-tags { margin-top: 10px; display: flex; gap: 6px; }
+
+.checklist-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid #ffffff08;
+  font-size: 14px; line-height: 1.4;
+}
+.checklist-item .check { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -265,6 +298,22 @@ nav button .icon { font-size: 22px; }
   </div>
 </div>
 
+<!-- ===== SIDEQUESTS ===== -->
+<div class="page" id="page-quests">
+  <h1>Sidequests</h1>
+  <p style="color:var(--text2);margin-bottom:16px;font-size:14px;">Deine Missionen für draußen. Tippe auf eine Quest für den kompletten Spickzettel.</p>
+  <div id="quest-overview" class="deck-grid"></div>
+  <div id="quest-detail" style="display:none">
+    <button class="back-btn" onclick="showQuestOverview()">&#8592; Zurück</button>
+    <div class="quest-header" id="quest-header"></div>
+    <div id="quest-checklist" style="margin:16px 0;"></div>
+    <h2>Spickzettel</h2>
+    <div id="quest-phrases" class="phrase-list"></div>
+    <h2 style="margin-top:20px;">Bonus-Vokabeln</h2>
+    <div id="quest-vocab" class="phrase-list"></div>
+  </div>
+</div>
+
 <!-- ===== EINSTELLUNGEN ===== -->
 <div class="page" id="page-settings">
   <h1>Einstellungen</h1>
@@ -312,9 +361,10 @@ nav button .icon { font-size: 22px; }
 
 <!-- ===== NAV ===== -->
 <nav>
-  <button class="active" onclick="showPage('spick')"><span class="icon">📋</span>Spickzettel</button>
+  <button class="active" onclick="showPage('spick')"><span class="icon">📋</span>Spick</button>
   <button onclick="showPage('vokabeln')"><span class="icon">🗂</span>Vokabeln</button>
   <button onclick="showPage('quiz')"><span class="icon">⚡</span>Quiz</button>
+  <button onclick="showPage('quests')"><span class="icon">🗺</span>Quests</button>
   <button onclick="showPage('settings')"><span class="icon">⚙</span>Mehr</button>
 </nav>
 
@@ -623,6 +673,283 @@ const DECKS = [
   },
 ];
 
+const QUESTS = [
+  {
+    id: 'burger', emoji: '🍔', title: 'Burger holen',
+    subtitle: 'Chef Burger, Dalia oder Caballete y Berenjena',
+    desc: 'Geh Burger essen und bestelle komplett auf Spanisch. Kein Englisch!',
+    tags: [{ text: '15-20 Min.', cls: 'time' }, { text: 'Zu Fuß oder Rappi', cls: 'walk' }],
+    steps: [
+      'Entscheide: hingehensoder Rappi?',
+      'Auf Spanisch bestellen (siehe Spickzettel)',
+      'Bezahlen auf Spanisch',
+      'Bonus: Frag den Kellner "¿Qué me recomienda?"',
+    ],
+    phrases: [
+      { es: 'Quiero una hamburguesa, por favor.', de: 'Ich möchte einen Burger, bitte.' },
+      { es: '¿Cuál es la hamburguesa vegetariana?', de: 'Welcher ist der vegetarische Burger?' },
+      { es: 'Sin tocineta, por favor.', de: 'Ohne Speck, bitte.' },
+      { es: 'Con papas.', de: 'Mit Pommes.' },
+      { es: 'Para comer aquí. / Para llevar.', de: 'Zum Hieressen. / Zum Mitnehmen.' },
+      { es: '¿Qué bebidas tienen?', de: 'Welche Getränke haben Sie?' },
+      { es: 'Un agua, por favor.', de: 'Ein Wasser, bitte.' },
+      { es: 'La cuenta, por favor.', de: 'Die Rechnung, bitte.' },
+      { es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+    ],
+    vocab: [
+      { es: 'la hamburguesa', de: 'der Burger' },
+      { es: 'las papas fritas', de: 'die Pommes' },
+      { es: 'la tocineta', de: 'der Speck' },
+      { es: 'la bebida', de: 'das Getränk' },
+      { es: 'la gaseosa', de: 'die Limonade / Softdrink' },
+    ]
+  },
+  {
+    id: 'homecenter', emoji: '🔧', title: 'Homecenter: Wasserfilter',
+    subtitle: 'Filtro de agua kaufen',
+    desc: 'Geh zu Homecenter und kauf einen Wasserfilter. Frag einen Mitarbeiter (orange Weste) nach Hilfe — auf Spanisch.',
+    tags: [{ text: '30-45 Min.', cls: 'time' }, { text: 'Homecenter', cls: 'walk' }],
+    steps: [
+      'Mitarbeiter finden (orange Weste)',
+      'Fragen wo die Wasserfilter sind',
+      'Nach Empfehlung fragen',
+      'Nach Ersatzfiltern fragen',
+      'Preis checken und kaufen',
+    ],
+    phrases: [
+      { es: 'Disculpe, ¿me puede ayudar?', de: 'Entschuldigung, können Sie mir helfen?' },
+      { es: 'Estoy buscando un filtro de agua.', de: 'Ich suche einen Wasserfilter.' },
+      { es: '¿Dónde están los filtros de agua?', de: 'Wo sind die Wasserfilter?' },
+      { es: '¿Cuál me recomienda?', de: 'Welchen empfehlen Sie mir?' },
+      { es: '¿Tiene repuestos para este filtro?', de: 'Haben Sie Ersatzfilter dafür?' },
+      { es: '¿Cuánto dura el filtro?', de: 'Wie lange hält der Filter?' },
+      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+      { es: '¿Tiene algo más barato?', de: 'Haben Sie etwas Günstigeres?' },
+      { es: 'Me llevo este, por favor.', de: 'Ich nehme diesen, bitte.' },
+    ],
+    vocab: [
+      { es: 'el filtro de agua', de: 'der Wasserfilter' },
+      { es: 'la jarra con filtro', de: 'die Filterkanne (wie Brita)' },
+      { es: 'el grifo', de: 'der Wasserhahn' },
+      { es: 'el repuesto', de: 'das Ersatzteil / der Ersatzfilter' },
+      { es: 'la caja', de: 'die Kasse' },
+      { es: '¿Dónde está la caja?', de: 'Wo ist die Kasse?' },
+    ]
+  },
+  {
+    id: 'dollarcity', emoji: '🧩', title: 'Dollar City: Puzzleunterlage',
+    subtitle: 'Cartón paja als Unterlage kaufen',
+    desc: 'Geh zu Dollar City und kauf festen Karton als Puzzleunterlage. Abteilung: Papelería (Schreibwaren).',
+    tags: [{ text: '15 Min.', cls: 'time' }, { text: 'Dollar City', cls: 'walk' }],
+    steps: [
+      'Zur Abteilung Papelería gehen',
+      'Nach cartón paja fragen',
+      'Größe erklären (für Puzzle)',
+      'Kaufen!',
+    ],
+    phrases: [
+      { es: '¿Tiene cartón paja grande?', de: 'Haben Sie großen festen Karton?' },
+      { es: 'Necesito algo plano y duro para poner un rompecabezas.', de: 'Ich brauche etwas Flaches/Hartes für ein Puzzle.' },
+      { es: 'Es para un rompecabezas de mil piezas.', de: 'Es ist für ein 1000-Teile-Puzzle.' },
+      { es: '¿Tiene uno más grande?', de: 'Haben Sie einen größeren?' },
+      { es: '¿Dónde está la papelería?', de: 'Wo ist die Schreibwarenabteilung?' },
+      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+    ],
+    vocab: [
+      { es: 'el cartón paja', de: 'fester Karton / Pappe' },
+      { es: 'el rompecabezas', de: 'das Puzzle' },
+      { es: 'las piezas', de: 'die Teile' },
+      { es: 'la papelería', de: 'Schreibwaren(abteilung)' },
+      { es: 'plano', de: 'flach' },
+      { es: 'duro', de: 'hart' },
+    ]
+  },
+  {
+    id: 'tienda', emoji: '🏪', title: 'Tienda: Obst kaufen',
+    subtitle: 'Zur nächsten Tienda und auf Spanisch einkaufen',
+    desc: 'Geh zur nächsten Tienda oder Fruver und kauf Obst. Frag nach dem Preis pro Libra und ob es reif ist.',
+    tags: [{ text: '10 Min.', cls: 'time' }, { text: 'Zu Fuß', cls: 'walk' }],
+    steps: [
+      'Zur nächsten Tienda/Fruver gehen',
+      'Obst aussuchen',
+      'Nach dem Preis fragen',
+      'Fragen ob es reif ist',
+      'Eine Libra (500g) bestellen',
+    ],
+    phrases: [
+      { es: '¿Cuánto vale la libra de aguacate?', de: 'Was kostet das Pfund Avocado?' },
+      { es: '¿Están maduros?', de: 'Sind die reif?' },
+      { es: 'Deme una libra de bananos, por favor.', de: 'Geben Sie mir ein Pfund Bananen.' },
+      { es: 'Y dos mangos, por favor.', de: 'Und zwei Mangos, bitte.' },
+      { es: '¿Qué me recomienda?', de: 'Was empfehlen Sie mir?' },
+      { es: 'Quiero probar.', de: 'Ich möchte probieren.' },
+      { es: '¿Me puede dar una bolsa?', de: 'Können Sie mir eine Tüte geben?' },
+    ],
+    vocab: [
+      { es: 'la libra', de: '500g (Standardeinheit!)' },
+      { es: 'maduro / madura', de: 'reif' },
+      { es: 'la bolsa', de: 'die Tüte' },
+      { es: 'la tienda', de: 'der kleine Laden' },
+      { es: 'el fruver', de: 'der Obst-/Gemüseladen' },
+    ]
+  },
+  {
+    id: 'cafe', emoji: '☕', title: 'Café: Kaffee bestellen',
+    subtitle: 'Einen Kaffee oder Saft komplett auf Spanisch bestellen',
+    desc: 'Geh in ein Café in der Nähe und bestell dir was. Komplett auf Spanisch — kein Englisch!',
+    tags: [{ text: '15 Min.', cls: 'time' }, { text: 'Zu Fuß', cls: 'walk' }],
+    steps: [
+      'Café betreten, "Buenos días/tardes" sagen',
+      'Getränk bestellen',
+      'Wenn sie fragen: Größe angeben',
+      'Bezahlen',
+      'Bonus: Frag nach der WiFi-Clave',
+    ],
+    phrases: [
+      { es: 'Me regala un café, por favor.', de: 'Einen Kaffee, bitte.' },
+      { es: 'Un café con leche.', de: 'Einen Milchkaffee.' },
+      { es: 'Un tinto, por favor.', de: 'Einen schwarzen Kaffee (kolumbianisch).' },
+      { es: 'Un jugo de lulo, por favor.', de: 'Einen Lulo-Saft, bitte.' },
+      { es: 'Grande, por favor.', de: 'Groß, bitte.' },
+      { es: 'Para llevar.', de: 'Zum Mitnehmen.' },
+      { es: 'Para tomar aquí.', de: 'Zum Hiertrinken.' },
+      { es: '¿Cuál es la clave del wifi?', de: 'Was ist das WiFi-Passwort?' },
+      { es: 'La cuenta, por favor.', de: 'Die Rechnung, bitte.' },
+    ],
+    vocab: [
+      { es: 'el tinto', de: 'schwarzer Kaffee (kolumb.)' },
+      { es: 'el jugo', de: 'der Saft' },
+      { es: 'la leche', de: 'die Milch' },
+      { es: 'la leche de almendras', de: 'die Mandelmilch' },
+      { es: 'caliente', de: 'heiß' },
+      { es: 'frío', de: 'kalt' },
+    ]
+  },
+  {
+    id: 'foodsgarden', emoji: '🥗', title: "Food's Garden: Salat bauen",
+    subtitle: 'Calle 140 #17A-27 — Barra de ensaladas',
+    desc: 'Probier Food\'s Garden aus! Bau dir an der Salat-Bar einen eigenen Salat zusammen — alles auf Spanisch.',
+    tags: [{ text: '20 Min.', cls: 'time' }, { text: '~8 Min. zu Fuß', cls: 'walk' }],
+    steps: [
+      'Zu Food\'s Garden gehen (Calle ciento cuarenta, 140)',
+      'An die Barra de ensaladas gehen',
+      '6 Gemüse auswählen und benennen',
+      '1 Käse, 1 Topping, 1 Dressing wählen',
+      'Bezahlen',
+    ],
+    phrases: [
+      { es: 'Quiero armar una ensalada, por favor.', de: 'Ich möchte einen Salat zusammenstellen.' },
+      { es: 'Con espinaca, tomate, zanahoria, aguacate, brócoli y maíz.', de: 'Mit Spinat, Tomate, Möhre, Avocado, Brokkoli und Mais.' },
+      { es: '¿Qué quesos tienen?', de: 'Welche Käse haben Sie?' },
+      { es: '¿Qué aderezos tienen?', de: 'Welche Dressings haben Sie?' },
+      { es: '¿Cuánto vale la ensalada?', de: 'Wie viel kostet der Salat?' },
+      { es: 'Sin cebolla, por favor.', de: 'Ohne Zwiebel, bitte.' },
+      { es: 'Un poquito más, por favor.', de: 'Ein bisschen mehr, bitte.' },
+    ],
+    vocab: [
+      { es: 'la ensalada', de: 'der Salat' },
+      { es: 'el aderezo', de: 'das Dressing' },
+      { es: 'el queso', de: 'der Käse' },
+      { es: 'armar', de: 'zusammenbauen / zusammenstellen' },
+      { es: 'la barra', de: 'die Theke / Bar' },
+    ]
+  },
+  {
+    id: 'spaziergang', emoji: '🚶', title: 'Spaziergang: 10 Dinge benennen',
+    subtitle: 'Raus und die Welt auf Spanisch beschreiben',
+    desc: 'Geh zum Parque Cedritos oder einfach durch die Straßen. Benenne alles was du siehst auf Spanisch. Ziel: 10 Dinge!',
+    tags: [{ text: '15-20 Min.', cls: 'time' }, { text: 'Draußen', cls: 'walk' }],
+    steps: [
+      'Rausgehen und losspazieren',
+      'Jedes Ding das du siehst: auf Spanisch benennen',
+      '10 verschiedene Dinge schaffen',
+      'Bonus: Beschreibe sie mit Farben (el carro rojo, el edificio grande)',
+    ],
+    phrases: [
+      { es: 'el árbol', de: 'der Baum' },
+      { es: 'el carro', de: 'das Auto' },
+      { es: 'la calle', de: 'die Straße' },
+      { es: 'el edificio', de: 'das Gebäude' },
+      { es: 'la tienda', de: 'der Laden' },
+      { es: 'el perro', de: 'der Hund' },
+      { es: 'el semáforo', de: 'die Ampel' },
+      { es: 'la nube', de: 'die Wolke' },
+      { es: 'la flor', de: 'die Blume' },
+      { es: 'el parque', de: 'der Park' },
+      { es: 'la bicicleta', de: 'das Fahrrad' },
+      { es: 'el bus', de: 'der Bus' },
+      { es: 'la señal', de: 'das Schild' },
+    ],
+    vocab: [
+      { es: 'grande', de: 'groß' },
+      { es: 'pequeño', de: 'klein' },
+      { es: 'rojo', de: 'rot' },
+      { es: 'verde', de: 'grün' },
+      { es: 'azul', de: 'blau' },
+      { es: 'bonito', de: 'hübsch / schön' },
+      { es: 'viejo', de: 'alt' },
+      { es: 'nuevo', de: 'neu' },
+    ]
+  },
+  {
+    id: 'drogueria', emoji: '💊', title: 'Droguería: Etwas Einfaches kaufen',
+    subtitle: 'Apotheke / Drogerie besuchen',
+    desc: 'Geh in eine Droguería (gibt es überall) und kauf etwas Einfaches — Seife, Pflaster, Sonnencreme. Auf Spanisch fragen!',
+    tags: [{ text: '10 Min.', cls: 'time' }, { text: 'Zu Fuß', cls: 'walk' }],
+    steps: [
+      'Zur nächsten Droguería gehen',
+      '"Buenos días/tardes" sagen',
+      'Nach dem Produkt fragen',
+      'Bezahlen',
+    ],
+    phrases: [
+      { es: '¿Tiene jabón?', de: 'Haben Sie Seife?' },
+      { es: '¿Tiene protector solar?', de: 'Haben Sie Sonnencreme?' },
+      { es: '¿Tiene curitas?', de: 'Haben Sie Pflaster?' },
+      { es: '¿Tiene crema para las manos?', de: 'Haben Sie Handcreme?' },
+      { es: '¿Tiene pasta de dientes?', de: 'Haben Sie Zahnpasta?' },
+      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+      { es: 'Me llevo este, por favor.', de: 'Ich nehme diesen.' },
+    ],
+    vocab: [
+      { es: 'la droguería', de: 'die Drogerie / Apotheke' },
+      { es: 'el jabón', de: 'die Seife' },
+      { es: 'el protector solar', de: 'die Sonnencreme' },
+      { es: 'las curitas', de: 'die Pflaster' },
+      { es: 'la crema', de: 'die Creme' },
+      { es: 'la pasta de dientes', de: 'die Zahnpasta' },
+    ]
+  },
+  {
+    id: 'speisekarte', emoji: '📖', title: 'Speisekarte lesen',
+    subtitle: 'In ein Restaurant gehen und die Karte studieren',
+    desc: 'Geh in ein Restaurant in der Nähe, bitte um die Karte und lies sie komplett auf Spanisch. Schreib 5 Wörter auf die du nicht kennst.',
+    tags: [{ text: '15 Min.', cls: 'time' }, { text: 'Restaurant', cls: 'walk' }],
+    steps: [
+      'Restaurant betreten',
+      '"Me regala la carta, por favor." sagen',
+      'Die ganze Karte auf Spanisch lesen',
+      '5 unbekannte Wörter aufschreiben',
+      'Etwas bestellen oder höflich gehen',
+    ],
+    phrases: [
+      { es: 'Me regala la carta, por favor.', de: 'Die Speisekarte, bitte.' },
+      { es: '¿Qué me recomienda?', de: 'Was empfehlen Sie mir?' },
+      { es: '¿Qué es esto?', de: 'Was ist das?' },
+      { es: '¿Esto tiene carne?', de: 'Enthält das Fleisch?' },
+      { es: 'Voy a pensarlo, gracias.', de: 'Ich überlege noch, danke.' },
+    ],
+    vocab: [
+      { es: 'la carta / el menú', de: 'die Speisekarte' },
+      { es: 'el plato fuerte', de: 'das Hauptgericht' },
+      { es: 'la entrada', de: 'die Vorspeise' },
+      { es: 'el postre', de: 'der Nachtisch' },
+      { es: 'la sopa', de: 'die Suppe' },
+      { es: 'la bebida', de: 'das Getränk' },
+    ]
+  },
+];
+
 // ============================================================
 //  STATE
 // ============================================================
@@ -649,10 +976,11 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('nav button').forEach((b, i) => {
-    b.classList.toggle('active', ['spick','vokabeln','quiz','settings'][i] === id);
+    b.classList.toggle('active', ['spick','vokabeln','quiz','quests','settings'][i] === id);
   });
   if (id === 'quiz') nextQuiz();
   if (id === 'vokabeln') renderDecks();
+  if (id === 'quests') renderQuests();
   if (id === 'settings') renderSettings();
 }
 
@@ -835,6 +1163,50 @@ function checkQuiz() {
   // Track streak
   const today = new Date().toDateString();
   localStorage.setItem('esp-last-quiz', today);
+}
+
+// ============================================================
+//  QUESTS
+// ============================================================
+function renderQuests() {
+  const el = document.getElementById('quest-overview');
+  el.style.display = '';
+  document.getElementById('quest-detail').style.display = 'none';
+  el.innerHTML = QUESTS.map(q => `
+    <div class="quest-card" onclick="showQuest('${q.id}')">
+      <div class="quest-emoji">${q.emoji}</div>
+      <div class="quest-info">
+        <div class="quest-title">${q.title}</div>
+        <div class="quest-subtitle">${q.subtitle}</div>
+        <div class="quest-tags">${q.tags.map(t => `<span class="quest-tag ${t.cls}">${t.text}</span>`).join('')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showQuest(id) {
+  const q = QUESTS.find(x => x.id === id);
+  document.getElementById('quest-overview').style.display = 'none';
+  document.getElementById('quest-detail').style.display = 'block';
+  document.getElementById('quest-header').innerHTML = `
+    <div class="q-title">${q.emoji} ${q.title}</div>
+    <div class="q-desc">${q.desc}</div>
+    <div class="q-tags">${q.tags.map(t => `<span class="quest-tag ${t.cls}">${t.text}</span>`).join('')}</div>
+  `;
+  document.getElementById('quest-checklist').innerHTML = q.steps.map(s => `
+    <div class="checklist-item"><span class="check">▸</span><span>${s}</span></div>
+  `).join('');
+  document.getElementById('quest-phrases').innerHTML = q.phrases.map(p => `
+    <div class="phrase-item"><div class="es">${p.es}</div><div class="de">${p.de}</div></div>
+  `).join('');
+  document.getElementById('quest-vocab').innerHTML = q.vocab.map(v => `
+    <div class="phrase-item"><div class="es">${v.es}</div><div class="de">${v.de}</div></div>
+  `).join('');
+}
+
+function showQuestOverview() {
+  document.getElementById('quest-overview').style.display = '';
+  document.getElementById('quest-detail').style.display = 'none';
 }
 
 // ============================================================
