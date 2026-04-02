@@ -239,6 +239,42 @@ nav button .icon { font-size: 22px; }
   font-size: 14px; line-height: 1.4;
 }
 .checklist-item .check { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+/* ---- AUDIO MODE ---- */
+.audio-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+  margin-bottom: 16px; transition: transform .1s, opacity .2s;
+}
+.audio-btn:active { transform: scale(.97); }
+.audio-btn.playing { background: linear-gradient(135deg, var(--green), #059669); }
+.audio-btn .audio-icon { font-size: 20px; }
+
+.audio-status {
+  text-align: center; font-size: 13px; color: var(--text2);
+  margin-bottom: 12px; min-height: 20px;
+}
+
+.audio-current {
+  background: var(--card); border-radius: 12px; padding: 16px;
+  border-left: 3px solid var(--green); margin-bottom: 12px;
+  display: none;
+}
+.audio-current.active { display: block; }
+.audio-current .ac-es { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.audio-current .ac-de { font-size: 14px; color: var(--text2); }
+
+.audio-speed {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 12px; font-size: 13px; color: var(--text2);
+}
+.speed-btn {
+  background: var(--card); border: 1px solid #ffffff20; color: var(--text);
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+}
+.speed-btn.active { background: var(--accent); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -248,8 +284,22 @@ nav button .icon { font-size: 22px; }
   <h1>Spickzettel</h1>
   <div id="spick-overview" class="situation-grid"></div>
   <div id="spick-detail" style="display:none">
-    <button class="back-btn" onclick="showSpickOverview()">&#8592; Zurück</button>
+    <button class="back-btn" onclick="showSpickOverview(); stopAudio();">&#8592; Zurück</button>
     <h2 id="spick-detail-title"></h2>
+    <button class="audio-btn" id="spick-audio-btn" onclick="toggleSpickAudio()">
+      <span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen
+    </button>
+    <div class="audio-speed" id="spick-audio-speed" style="display:none;">
+      <span>Tempo:</span>
+      <button class="speed-btn" onclick="setSpeed(0.6)">Langsam</button>
+      <button class="speed-btn active" onclick="setSpeed(0.8)">Normal</button>
+      <button class="speed-btn" onclick="setSpeed(1.0)">Schnell</button>
+    </div>
+    <div class="audio-status" id="spick-audio-status"></div>
+    <div class="audio-current" id="spick-audio-current">
+      <div class="ac-es" id="spick-ac-es"></div>
+      <div class="ac-de" id="spick-ac-de"></div>
+    </div>
     <div id="spick-detail-list" class="phrase-list"></div>
   </div>
 </div>
@@ -304,10 +354,24 @@ nav button .icon { font-size: 22px; }
   <p style="color:var(--text2);margin-bottom:16px;font-size:14px;">Deine Missionen für draußen. Tippe auf eine Quest für den kompletten Spickzettel.</p>
   <div id="quest-overview" class="deck-grid"></div>
   <div id="quest-detail" style="display:none">
-    <button class="back-btn" onclick="showQuestOverview()">&#8592; Zurück</button>
+    <button class="back-btn" onclick="showQuestOverview(); stopAudio();">&#8592; Zurück</button>
     <div class="quest-header" id="quest-header"></div>
     <div id="quest-checklist" style="margin:16px 0;"></div>
     <h2>Spickzettel</h2>
+    <button class="audio-btn" id="quest-audio-btn" onclick="toggleQuestAudio()">
+      <span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen
+    </button>
+    <div class="audio-speed" id="quest-audio-speed" style="display:none;">
+      <span>Tempo:</span>
+      <button class="speed-btn" onclick="setSpeed(0.6)">Langsam</button>
+      <button class="speed-btn active" onclick="setSpeed(0.8)">Normal</button>
+      <button class="speed-btn" onclick="setSpeed(1.0)">Schnell</button>
+    </div>
+    <div class="audio-status" id="quest-audio-status"></div>
+    <div class="audio-current" id="quest-audio-current">
+      <div class="ac-es" id="quest-ac-es"></div>
+      <div class="ac-de" id="quest-ac-de"></div>
+    </div>
     <div id="quest-phrases" class="phrase-list"></div>
     <h2 style="margin-top:20px;">Bonus-Vokabeln</h2>
     <div id="quest-vocab" class="phrase-list"></div>
@@ -1017,6 +1081,7 @@ function renderSpickOverview() {
 
 function showSituation(id) {
   const s = SPICKZETTEL.find(x => x.id === id);
+  currentSpickPhrases = s.phrases;
   document.getElementById('spick-overview').style.display = 'none';
   document.getElementById('spick-detail').style.display = 'block';
   document.getElementById('spick-detail-title').textContent = s.emoji + ' ' + s.label;
@@ -1184,6 +1249,137 @@ function checkQuiz() {
 }
 
 // ============================================================
+//  AUDIO (Text-to-Speech Hands-free Mode)
+// ============================================================
+let audioPlaying = false;
+let audioAbort = false;
+let audioSpeed = 0.8;
+let currentAudioPhrases = [];
+let currentAudioContext = ''; // 'spick' or 'quest'
+
+function speak(text, lang, rate) {
+  return new Promise((resolve, reject) => {
+    if (audioAbort) { reject('aborted'); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.rate = rate || audioSpeed;
+    u.onend = resolve;
+    u.onerror = e => e.error === 'canceled' ? reject('aborted') : resolve();
+    speechSynthesis.speak(u);
+  });
+}
+
+function pause(ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      if (audioAbort) reject('aborted');
+      else resolve();
+    }, ms);
+  });
+}
+
+async function playPhrases(phrases, ctx) {
+  audioPlaying = true;
+  audioAbort = false;
+  currentAudioContext = ctx;
+  currentAudioPhrases = phrases;
+
+  const btn = document.getElementById(ctx + '-audio-btn');
+  const status = document.getElementById(ctx + '-audio-status');
+  const current = document.getElementById(ctx + '-audio-current');
+  const speedEl = document.getElementById(ctx + '-audio-speed');
+  btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
+  btn.classList.add('playing');
+  speedEl.style.display = 'flex';
+
+  try {
+    // Announce start
+    status.textContent = 'Starte Vorlesen...';
+    await speak('Empezamos.', 'es-CO', 0.9);
+    await pause(500);
+
+    for (let i = 0; i < phrases.length; i++) {
+      if (audioAbort) break;
+      const p = phrases[i];
+      status.textContent = `${i + 1} / ${phrases.length}`;
+      current.classList.add('active');
+      document.getElementById(ctx + '-ac-es').textContent = p.es;
+      document.getElementById(ctx + '-ac-de').textContent = p.de;
+
+      // Speak Spanish (twice: slow then normal)
+      await speak(p.es, 'es-CO', audioSpeed * 0.75);
+      await pause(600);
+      await speak(p.es, 'es-CO', audioSpeed);
+      await pause(400);
+
+      // Speak German translation
+      await speak(p.de, 'de-DE', audioSpeed * 1.1);
+      await pause(800);
+
+      // Repeat Spanish one more time
+      await speak(p.es, 'es-CO', audioSpeed);
+      await pause(1200);
+    }
+
+    if (!audioAbort) {
+      status.textContent = 'Fertig!';
+      await speak('Muy bien. Eso es todo.', 'es-CO', 0.9);
+    }
+  } catch (e) {
+    // aborted
+  }
+
+  audioPlaying = false;
+  btn.innerHTML = '<span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen';
+  btn.classList.remove('playing');
+  current.classList.remove('active');
+  if (!audioAbort) status.textContent = '';
+  speedEl.style.display = 'none';
+}
+
+function stopAudio() {
+  audioAbort = true;
+  speechSynthesis.cancel();
+  audioPlaying = false;
+  ['spick', 'quest'].forEach(ctx => {
+    const btn = document.getElementById(ctx + '-audio-btn');
+    if (btn) {
+      btn.innerHTML = '<span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen';
+      btn.classList.remove('playing');
+    }
+    const s = document.getElementById(ctx + '-audio-status');
+    if (s) s.textContent = '';
+    const c = document.getElementById(ctx + '-audio-current');
+    if (c) c.classList.remove('active');
+    const sp = document.getElementById(ctx + '-audio-speed');
+    if (sp) sp.style.display = 'none';
+  });
+}
+
+function setSpeed(s) {
+  audioSpeed = s;
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.classList.toggle('active',
+      (s === 0.6 && b.textContent === 'Langsam') ||
+      (s === 0.8 && b.textContent === 'Normal') ||
+      (s === 1.0 && b.textContent === 'Schnell')
+    );
+  });
+}
+
+let currentSpickPhrases = [];
+function toggleSpickAudio() {
+  if (audioPlaying) { stopAudio(); return; }
+  playPhrases(currentSpickPhrases, 'spick');
+}
+
+let currentQuestPhrases = [];
+function toggleQuestAudio() {
+  if (audioPlaying) { stopAudio(); return; }
+  playPhrases(currentQuestPhrases, 'quest');
+}
+
+// ============================================================
 //  QUESTS
 // ============================================================
 function renderQuests() {
@@ -1214,6 +1410,7 @@ function showQuest(id) {
   document.getElementById('quest-checklist').innerHTML = q.steps.map(s => `
     <div class="checklist-item"><span class="check">▸</span><span>${s}</span></div>
   `).join('');
+  currentQuestPhrases = q.phrases.concat(q.vocab);
   document.getElementById('quest-phrases').innerHTML = q.phrases.map(p => `
     <div class="phrase-item"><div class="es">${p.es}</div><div class="de">${p.de}</div></div>
   `).join('');
