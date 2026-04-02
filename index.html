@@ -230,7 +230,7 @@ nav button .icon { font-size: 22px; }
   margin-bottom: 16px; border: 1px solid #ffffff10;
 }
 .quest-header .q-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-.quest-header .q-desc { font-size: 14px; color: var(--text2); line-height: 1.5; }
+.quest-header .q-desc { font-size: 14px; color: var(--text2); line-height: 1.5; white-space: pre-line; }
 .quest-header .q-tags { margin-top: 10px; display: flex; gap: 6px; }
 
 .checklist-item {
@@ -476,6 +476,24 @@ const SPICKZETTEL = [
     ]
   },
   {
+    id: 'navigation', emoji: '🧭', label: 'Navigation',
+    phrases: [
+      { es: 'Calle = Ost-West-Straße (Nummer steigt nach Norden)', de: '↑ Calle 146 ist nördlicher als Calle 140' },
+      { es: 'Carrera = Nord-Süd-Straße (Nummer steigt nach Westen)', de: '← Carrera 19 ist westlicher als Carrera 12' },
+      { es: 'Avenida = große Hauptstraße', de: 'Av. Cra 9 ist eine breite Hauptstraße' },
+      { es: '# = "con" (mit/Kreuzung)', de: 'Calle 140 #12-09 = Calle 140 con Carrera 12' },
+      { es: '¿Dónde queda...?', de: 'Wo befindet sich...?' },
+      { es: 'Siga derecho.', de: 'Geradeaus weiter.' },
+      { es: 'A la derecha.', de: 'Nach rechts.' },
+      { es: 'A la izquierda.', de: 'Nach links.' },
+      { es: 'norte / sur / oriente / occidente', de: 'Norden / Süden / Osten / Westen' },
+      { es: 'Estoy en la Calle ciento cuarenta y seis con Carrera doce.', de: 'Ich bin an der Calle 146 / Carrera 12.' },
+      { es: 'una cuadra / dos cuadras', de: 'ein Block / zwei Blocks' },
+      { es: '¿Cuántas cuadras?', de: 'Wie viele Blocks?' },
+      { es: 'Queda a tres cuadras.', de: 'Es ist drei Blocks entfernt.' },
+    ]
+  },
+  {
     id: 'burger', emoji: '🍔', label: 'Burger bestellen',
     phrases: [
       { es: 'Quiero una hamburguesa, por favor.', de: 'Ich möchte einen Burger, bitte.' },
@@ -676,9 +694,9 @@ const DECKS = [
 const QUESTS = [
   {
     id: 'burger', emoji: '🍔', title: 'Burger holen',
-    subtitle: 'Chef Burger, Dalia oder Caballete y Berenjena',
-    desc: 'Geh Burger essen und bestelle komplett auf Spanisch. Kein Englisch!',
-    tags: [{ text: '15-20 Min.', cls: 'time' }, { text: 'Zu Fuß oder Rappi', cls: 'walk' }],
+    subtitle: 'Chef Burger — Calle ciento cuarenta (140) # doce - cero nueve (12-09)',
+    desc: 'Geh Burger essen bei Chef Burger und bestelle komplett auf Spanisch. Kein Englisch!\n\n📍 Calle 140 #12-09 — Von zu Hause: Einfach nach Süden auf der Carrera 12 bis zur Calle 140. Ca. 7 Min. zu Fuß.\n📍 Von Dollar City: Geh nach Osten zur Carrera 12, dann nach Süden zur Calle 140.\n\n🕐 11-23 Uhr',
+    tags: [{ text: '20-30 Min.', cls: 'time' }, { text: '~7 Min. zu Fuß', cls: 'walk' }],
     steps: [
       'Entscheide: hingehensoder Rappi?',
       'Auf Spanisch bestellen (siehe Spickzettel)',
@@ -706,9 +724,9 @@ const QUESTS = [
   },
   {
     id: 'homecenter', emoji: '🔧', title: 'Homecenter: Wasserfilter',
-    subtitle: 'Filtro de agua kaufen',
-    desc: 'Geh zu Homecenter und kauf einen Wasserfilter. Frag einen Mitarbeiter (orange Weste) nach Hilfe — auf Spanisch.',
-    tags: [{ text: '30-45 Min.', cls: 'time' }, { text: 'Homecenter', cls: 'walk' }],
+    subtitle: 'Av. Carrera nueve (9) # ciento cincuenta y dos A - veintitrés (152A-23)',
+    desc: 'Geh zu Homecenter Cedritos und kauf einen Wasserfilter. Frag einen Mitarbeiter (orange Weste) nach Hilfe — auf Spanisch.\n\n📍 Av. Cra 9 #152A-23 — Von zu Hause: Geh zur Carrera 9 (nach Westen) und dann nach Norden bis Calle 152A. Ca. 15 Min. zu Fuß.\n\n🕐 Mo-Sa 7-21, So 8-20 Uhr',
+    tags: [{ text: '30-45 Min.', cls: 'time' }, { text: '~15 Min. zu Fuß', cls: 'walk' }],
     steps: [
       'Mitarbeiter finden (orange Weste)',
       'Fragen wo die Wasserfilter sind',
@@ -738,9 +756,9 @@ const QUESTS = [
   },
   {
     id: 'dollarcity', emoji: '🧩', title: 'Dollar City: Puzzleunterlage',
-    subtitle: 'Cartón paja als Unterlage kaufen',
-    desc: 'Geh zu Dollar City und kauf festen Karton als Puzzleunterlage. Abteilung: Papelería (Schreibwaren).',
-    tags: [{ text: '15 Min.', cls: 'time' }, { text: 'Dollar City', cls: 'walk' }],
+    subtitle: 'Av. Carrera diecinueve (19) # ciento cuarenta y tres A - catorce (143A-14)',
+    desc: 'Geh zu Dollar City Cedritos und kauf festen Karton als Puzzleunterlage. Abteilung: Papelería (Schreibwaren).\n\n📍 Av. Cra 19 #143A-14 — Von zu Hause: Geh nach Süden zur Calle 143A, dann nach Westen bis Carrera 19. Ca. 10 Min. zu Fuß.\n📍 Von Homecenter: Geh zurück nach Süden zur Calle 143A, dann nach Westen.',
+    tags: [{ text: '15 Min.', cls: 'time' }, { text: '~10 Min. zu Fuß', cls: 'walk' }],
     steps: [
       'Zur Abteilung Papelería gehen',
       'Nach cartón paja fragen',
@@ -827,8 +845,8 @@ const QUESTS = [
   },
   {
     id: 'foodsgarden', emoji: '🥗', title: "Food's Garden: Salat bauen",
-    subtitle: 'Calle 140 #17A-27 — Barra de ensaladas',
-    desc: 'Probier Food\'s Garden aus! Bau dir an der Salat-Bar einen eigenen Salat zusammen — alles auf Spanisch.',
+    subtitle: 'Calle ciento cuarenta (140) # diecisiete A - veintisiete (17A-27)',
+    desc: 'Probier Food\'s Garden aus! Bau dir an der Salat-Bar einen eigenen Salat zusammen — alles auf Spanisch.\n\n📍 Calle 140 #17A-27 — Von zu Hause: Nach Süden bis Calle 140, dann nach Westen bis Carrera 17A. Ca. 8 Min. zu Fuß.\n\n🕐 Mo-Fr 8-22 Uhr',
     tags: [{ text: '20 Min.', cls: 'time' }, { text: '~8 Min. zu Fuß', cls: 'walk' }],
     steps: [
       'Zu Food\'s Garden gehen (Calle ciento cuarenta, 140)',
