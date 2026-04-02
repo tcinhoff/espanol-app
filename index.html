@@ -373,7 +373,7 @@ const SPICKZETTEL = [
   {
     id: 'taxi', emoji: '🚕', label: 'Taxi / Uber',
     phrases: [
-      { es: 'A la Calle 146 con Carrera 12, por favor.', de: 'Zur Calle 146 / Carrera 12, bitte.' },
+      { es: 'A la Calle ciento cuarenta y seis (146) con Carrera doce (12), por favor.', de: 'Zur Calle 146 / Carrera 12, bitte.' },
       { es: 'Aquí está bien, gracias.', de: 'Hier ist gut, danke.' },
       { es: '¿Cuánto vale hasta...?', de: 'Wie viel kostet es bis...?' },
       { es: 'Por favor, ponga el taxímetro.', de: 'Bitte schalten Sie das Taxameter ein.' },
@@ -566,13 +566,50 @@ const DECKS = [
     ]
   },
   {
-    id: 'zahlen', name: 'Zahlen', icon: '🔢',
+    id: 'zahlen', name: 'Zahlen 0-20', icon: '🔢',
     cards: [
-      ['cero', '0'], ['uno', '1'], ['dos', '2'], ['tres', '3'], ['cuatro', '4'],
-      ['cinco', '5'], ['seis', '6'], ['siete', '7'], ['ocho', '8'], ['nueve', '9'],
-      ['diez', '10'], ['once', '11'], ['doce', '12'], ['trece', '13'],
-      ['catorce', '14'], ['quince', '15'], ['veinte', '20'], ['treinta', '30'],
-      ['cuarenta', '40'], ['cincuenta', '50'], ['cien', '100'], ['mil', '1000'],
+      ['cero', '0 (null)'], ['uno', '1 (eins)'], ['dos', '2 (zwei)'], ['tres', '3 (drei)'],
+      ['cuatro', '4 (vier)'], ['cinco', '5 (fünf)'], ['seis', '6 (sechs)'],
+      ['siete', '7 (sieben)'], ['ocho', '8 (acht)'], ['nueve', '9 (neun)'],
+      ['diez', '10 (zehn)'], ['once', '11 (elf)'], ['doce', '12 (zwölf)'],
+      ['trece', '13 (dreizehn)'], ['catorce', '14 (vierzehn)'], ['quince', '15 (fünfzehn)'],
+      ['dieciséis', '16 (sechzehn)'], ['diecisiete', '17 (siebzehn)'],
+      ['dieciocho', '18 (achtzehn)'], ['diecinueve', '19 (neunzehn)'],
+      ['veinte', '20 (zwanzig)'],
+    ]
+  },
+  {
+    id: 'zahlen2', name: 'Zahlen 21-1000', icon: '💯',
+    cards: [
+      ['veintiuno', '21 (einundzwanzig)'], ['veintidós', '22 (zweiundzwanzig)'],
+      ['veinticinco', '25 (fünfundzwanzig)'], ['treinta', '30 (dreißig)'],
+      ['treinta y uno', '31 (einunddreißig)'], ['treinta y cinco', '35 (fünfunddreißig)'],
+      ['cuarenta', '40 (vierzig)'], ['cuarenta y cinco', '45 (fünfundvierzig)'],
+      ['cincuenta', '50 (fünfzig)'], ['sesenta', '60 (sechzig)'],
+      ['sesenta y cinco', '65 (fünfundsechzig)'], ['setenta', '70 (siebzig)'],
+      ['ochenta', '80 (achtzig)'], ['noventa', '90 (neunzig)'],
+      ['cien', '100 (hundert)'], ['ciento uno', '101 (hunderteins)'],
+      ['ciento cuarenta y seis', '146 (deine Calle!)'],
+      ['doscientos', '200 (zweihundert)'], ['quinientos', '500 (fünfhundert)'],
+      ['mil', '1.000 (tausend)'],
+    ]
+  },
+  {
+    id: 'zahlen3', name: 'Preise auf Spanisch', icon: '💰',
+    cards: [
+      ['tres mil', '3.000 COP'],
+      ['cinco mil', '5.000 COP'],
+      ['diez mil', '10.000 COP'],
+      ['quince mil', '15.000 COP'],
+      ['veinte mil', '20.000 COP'],
+      ['veinticinco mil', '25.000 COP'],
+      ['treinta mil', '30.000 COP'],
+      ['treinta y ocho mil quinientos', '38.500 COP'],
+      ['cuarenta mil', '40.000 COP'],
+      ['cincuenta mil', '50.000 COP'],
+      ['cien mil', '100.000 COP'],
+      ['doscientos mil', '200.000 COP'],
+      ['un millón', '1.000.000 COP'],
     ]
   },
   {
