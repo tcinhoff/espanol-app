@@ -1470,7 +1470,7 @@ let currentSpickPhrases = [];
 let cartesiaPlayer = null;
 
 function tryPlayCartesia(audioId, ctx, phrases) {
-  const url = `./audio/${audioId}.wav`;
+  const url = `./audio/${audioId}.mp3`;
   const audio = new Audio(url);
   cartesiaPlayer = audio;
 
@@ -1523,12 +1523,12 @@ function toggleQuestAudio() {
 
 function showDownloadBtn(ctx, audioId) {
   const btn = document.getElementById(ctx + '-download-btn');
-  const url = `./audio/${audioId}.wav`;
+  const url = `./audio/${audioId}.mp3`;
   // Check if audio file exists
   fetch(url, { method: 'HEAD' }).then(r => {
     if (r.ok) {
       btn.href = url;
-      btn.download = `espanol-${audioId}.wav`;
+      btn.download = `espanol-${audioId}.mp3`;
       btn.style.display = 'flex';
     } else {
       btn.style.display = 'none';
