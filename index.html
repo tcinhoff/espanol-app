@@ -556,7 +556,7 @@ const SPICKZETTEL = [
     ]
   },
   {
-    id: 'baumarkt', emoji: '🔧', label: 'Homecenter',
+    id: 'homecenter', emoji: '🔧', label: 'Homecenter',
     phrases: [
       { es: 'Disculpe, ¿me puede ayudar?', de: 'Entschuldigung, können Sie mir helfen?' },
       { es: 'Estoy buscando un filtro de agua.', de: 'Ich suche einen Wasserfilter.' },
@@ -1514,19 +1514,31 @@ let cartesiaPlayer = null;
 
 function tryPlayCartesia(audioId, ctx, phrases) {
   const url = `./audio/${audioId}.mp3`;
-  const audio = new Audio(url);
+  const audio = new Audio();
   cartesiaPlayer = audio;
 
   const btn = document.getElementById(ctx + '-audio-btn');
   const status = document.getElementById(ctx + '-audio-status');
 
-  audio.addEventListener('canplaythrough', () => {
-    audioPlaying = true;
-    btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
-    btn.classList.add('playing');
-    status.textContent = 'Cartesia Audio läuft...';
-    audio.play();
-  }, { once: true });
+  // iOS requires play() in direct response to user tap — set src and play immediately
+  audio.src = url;
+  audio.preload = 'auto';
+
+  // Start playback immediately (iOS needs this in the click handler chain)
+  const playPromise = audio.play();
+
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      audioPlaying = true;
+      btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
+      btn.classList.add('playing');
+      status.textContent = 'Cartesia Audio läuft...';
+    }).catch(err => {
+      console.log('Audio play failed, falling back to TTS:', err);
+      cartesiaPlayer = null;
+      playPhrases(phrases, ctx);
+    });
+  }
 
   audio.addEventListener('ended', () => {
     audioPlaying = false;
@@ -1537,7 +1549,7 @@ function tryPlayCartesia(audioId, ctx, phrases) {
   });
 
   audio.addEventListener('error', () => {
-    // No Cartesia audio available, fallback to browser TTS
+    console.log('Audio file not found, falling back to TTS');
     cartesiaPlayer = null;
     playPhrases(phrases, ctx);
   }, { once: true });
