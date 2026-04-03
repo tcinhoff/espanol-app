@@ -240,6 +240,28 @@ nav button .icon { font-size: 22px; }
 }
 .checklist-item .check { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 
+/* ---- DIALOG ---- */
+.dialog-section { margin: 16px 0; }
+.dialog-section h2 { margin-bottom: 12px; }
+.dialog-line {
+  display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start;
+}
+.dialog-line .speaker {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 3px 8px; border-radius: 6px; flex-shrink: 0; margin-top: 4px;
+}
+.dialog-line .speaker.tu { background: var(--green); color: #1a1a2e; }
+.dialog-line .speaker.ellos { background: var(--orange); color: #1a1a2e; }
+.dialog-bubble {
+  background: var(--card); border-radius: 12px; padding: 10px 14px; flex: 1;
+  border: 1px solid #ffffff08;
+}
+.dialog-bubble .d-es { font-size: 15px; font-weight: 600; }
+.dialog-bubble .d-de { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.dialog-bubble .d-note {
+  font-size: 12px; color: var(--orange); margin-top: 4px; font-style: italic;
+}
+
 /* ---- AUDIO MODE ---- */
 .audio-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -360,6 +382,7 @@ nav button .icon { font-size: 22px; }
     <button class="back-btn" onclick="showQuestOverview(); stopAudio();">&#8592; Zurück</button>
     <div class="quest-header" id="quest-header"></div>
     <div id="quest-checklist" style="margin:16px 0;"></div>
+    <div id="quest-dialog-section"></div>
     <h2>Spickzettel</h2>
     <button class="audio-btn" id="quest-audio-btn" onclick="toggleQuestAudio()">
       <span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen
@@ -463,8 +486,8 @@ const SPICKZETTEL = [
   {
     id: 'einkaufen', emoji: '🛒', label: 'Einkaufen',
     phrases: [
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
-      { es: '¿Cuánto vale la libra?', de: 'Was kostet das Pfund (500g)?' },
+      { es: '¿Cuánto es?', de: 'Wie viel kostet es?' },
+      { es: '¿Cuánto es la libra?', de: 'Was kostet das Pfund (500g)?' },
       { es: 'Deme una libra de..., por favor.', de: 'Geben Sie mir ein Pfund ..., bitte.' },
       { es: '¿Tiene...?', de: 'Haben Sie...?' },
       { es: '¿Está maduro?', de: 'Ist das reif?' },
@@ -763,65 +786,132 @@ const DECKS = [
 
 const QUESTS = [
   {
-    id: 'burger', emoji: '🍔', title: 'Burger holen',
-    subtitle: 'Chef Burger — Calle ciento cuarenta (140) # doce - cero nueve (12-09)',
-    desc: 'Geh Burger essen bei Chef Burger und bestelle komplett auf Spanisch. Kein Englisch!\n\n📍 Calle 140 #12-09 — Von zu Hause: Einfach nach Süden auf der Carrera 12 bis zur Calle 140. Ca. 7 Min. zu Fuß.\n📍 Von Dollar City: Geh nach Osten zur Carrera 12, dann nach Süden zur Calle 140.\n\n🕐 11-23 Uhr',
+    id: 'burger', emoji: '🍔', title: 'Chef Burger: WFT Burger',
+    subtitle: 'Calle ciento cuarenta (140) # doce - cero nueve (12-09)',
+    desc: 'Geh zu Chef Burger und bestell den WFT Burger con Papas und einen Jugo de Mango en Leche.\n\n📍 Calle 140 #12-09 — Von zu Hause: nach Süden auf Carrera 12 bis Calle 140. ~7 Min.\n🕐 11-23 Uhr\n\n⬇ Scroll zum kompletten Dialog — lerne ihn vorher auswendig!',
     tags: [{ text: '20-30 Min.', cls: 'time' }, { text: '~7 Min. zu Fuß', cls: 'walk' }],
     steps: [
-      'Entscheide: hingehensoder Rappi?',
-      'Auf Spanisch bestellen (siehe Spickzettel)',
-      'Bezahlen auf Spanisch',
-      'Bonus: Frag den Kellner "¿Qué me recomienda?"',
+      'Dialog vorher durchlesen und üben',
+      'Audio anhören auf dem Hinweg',
+      'Reingehen, "Buenas tardes" sagen',
+      'Bestellen, bezahlen, genießen',
+    ],
+    dialog: [
+      { speaker: 'tu', es: 'Buenas tardes.', de: 'Guten Nachmittag.' },
+      { speaker: 'ellos', es: 'Buenas tardes, bienvenido. ¿Mesa para cuántos?', de: 'Guten Nachmittag, willkommen. Tisch für wie viele?' },
+      { speaker: 'tu', es: 'Para uno, por favor.', de: 'Für eine Person, bitte.' },
+      { speaker: 'ellos', es: 'Siga por aquí. ¿Ya sabe qué va a pedir?', de: 'Kommen Sie hier entlang. Wissen Sie schon was Sie bestellen?' },
+      { speaker: 'tu', es: 'Sí. Me regala un WFT burger con papas, por favor.', de: 'Ja. Ich hätte gerne einen WFT Burger mit Pommes.' },
+      { speaker: 'ellos', es: '¿Y para tomar?', de: 'Und zum Trinken?' },
+      { speaker: 'tu', es: '¿Tienen jugo de mango en leche?', de: 'Haben Sie Mango-Saft mit Milch?' },
+      { speaker: 'ellos', es: 'Sí, claro. / No, solo en agua.', de: 'Ja, klar. / Nein, nur mit Wasser.', note: 'Wenn kein Milch-Saft: "Entonces en agua, por favor." (Dann mit Wasser.)' },
+      { speaker: 'tu', es: 'En leche, por favor.', de: 'Mit Milch, bitte.' },
+      { speaker: 'ellos', es: '¿Algo más?', de: 'Noch etwas?' },
+      { speaker: 'tu', es: 'No, eso es todo. Gracias.', de: 'Nein, das ist alles. Danke.' },
+      { speaker: 'ellos', es: '(Essen kommt) ... ¿Todo bien? ¿Le gustó?', de: 'Alles gut? Hat es geschmeckt?' },
+      { speaker: 'tu', es: 'Sí, muy rico. La cuenta, por favor.', de: 'Ja, sehr lecker. Die Rechnung, bitte.' },
+      { speaker: 'ellos', es: '¿Cómo va a pagar?', de: 'Wie möchten Sie bezahlen?' },
+      { speaker: 'tu', es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+      { speaker: 'ellos', es: '¿A cuántas cuotas?', de: 'Auf wie viele Raten?' },
+      { speaker: 'tu', es: 'No, solo una.', de: 'Nein, nur eine.' },
     ],
     phrases: [
-      { es: 'Quiero una hamburguesa, por favor.', de: 'Ich möchte einen Burger, bitte.' },
-      { es: '¿Cuál es la hamburguesa vegetariana?', de: 'Welcher ist der vegetarische Burger?' },
-      { es: 'Sin tocineta, por favor.', de: 'Ohne Speck, bitte.' },
-      { es: 'Con papas.', de: 'Mit Pommes.' },
-      { es: 'Para comer aquí. / Para llevar.', de: 'Zum Hieressen. / Zum Mitnehmen.' },
-      { es: '¿Qué bebidas tienen?', de: 'Welche Getränke haben Sie?' },
-      { es: 'Un agua, por favor.', de: 'Ein Wasser, bitte.' },
-      { es: 'La cuenta, por favor.', de: 'Die Rechnung, bitte.' },
-      { es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+      { es: 'Me regala un WFT burger con papas, por favor.', de: 'Einen WFT Burger mit Pommes, bitte.' },
+      { es: '¿Tienen jugo de mango en leche?', de: 'Haben Sie Mango-Saft mit Milch?' },
+      { es: 'En leche, por favor. / En agua, por favor.', de: 'Mit Milch. / Mit Wasser.' },
+      { es: 'Para comer aquí.', de: 'Zum Hieressen.' },
+      { es: 'Para llevar.', de: 'Zum Mitnehmen.' },
+      { es: 'No, eso es todo.', de: 'Nein, das ist alles.' },
+      { es: 'Muy rico.', de: 'Sehr lecker.' },
     ],
     vocab: [
-      { es: 'la hamburguesa', de: 'der Burger' },
-      { es: 'las papas fritas', de: 'die Pommes' },
-      { es: 'la tocineta', de: 'der Speck' },
-      { es: 'la bebida', de: 'das Getränk' },
-      { es: 'la gaseosa', de: 'die Limonade / Softdrink' },
+      { es: '¿Mesa para cuántos?', de: 'Tisch für wie viele? (Das fragen sie dich!)' },
+      { es: 'Para uno / Para dos', de: 'Für eine Person / Für zwei' },
+      { es: '¿Y para tomar?', de: 'Und zum Trinken? (Das fragen sie dich!)' },
+      { es: '¿Algo más?', de: 'Noch etwas? (Das fragen sie dich!)' },
+      { es: '¿Cómo va a pagar?', de: 'Wie bezahlen Sie? (Das fragen sie dich!)' },
+      { es: 'el jugo de mango en leche', de: 'Mango-Saft auf Milchbasis' },
+      { es: 'el jugo de mango en agua', de: 'Mango-Saft auf Wasserbasis' },
     ]
   },
   {
     id: 'homecenter', emoji: '🔧', title: 'Homecenter: Wasserfilter',
-    subtitle: 'Av. Carrera nueve (9) # ciento cincuenta y dos A - veintitrés (152A-23)',
-    desc: 'Geh zu Homecenter Cedritos und kauf einen Wasserfilter. Frag einen Mitarbeiter (orange Weste) nach Hilfe — auf Spanisch.\n\n📍 Av. Cra 9 #152A-23 — Von zu Hause: Geh zur Carrera 9 (nach Westen) und dann nach Norden bis Calle 152A. Ca. 15 Min. zu Fuß.\n\n🕐 Mo-Sa 7-21, So 8-20 Uhr',
+    subtitle: 'Av. Carrera nueve (9) # ciento cincuenta y dos A (152A-23)',
+    desc: 'Geh zu Homecenter und kauf einen Wasserfilter. Du musst KEINEN Mitarbeiter ansprechen — such selbst in der Abteilung "Cocina" (Küche) oder frag nur wenn du dich traust.\n\n📍 Av. Cra 9 #152A-23 — nach Westen zur Cra 9, dann Norden bis 152A. ~15 Min.\n🕐 Mo-Sa 7-21, So 8-20 Uhr\n\n⬇ Der komplette Kassen-Dialog steht unten!',
     tags: [{ text: '30-45 Min.', cls: 'time' }, { text: '~15 Min. zu Fuß', cls: 'walk' }],
     steps: [
-      'Mitarbeiter finden (orange Weste)',
-      'Fragen wo die Wasserfilter sind',
-      'Nach Empfehlung fragen',
-      'Nach Ersatzfiltern fragen',
-      'Preis checken und kaufen',
+      'Such die Abteilung "Cocina" oder "Baños"',
+      'Wasserfilter aussuchen (Jarra con filtro = Filterkanne)',
+      'Zur Kasse gehen — Dialog siehe unten',
+    ],
+    dialog: [
+      { speaker: 'ellos', es: 'Buenas. ¿Eso es todo?', de: 'Hallo. Ist das alles?', note: 'Oder: "¿Solo esto?"' },
+      { speaker: 'tu', es: 'Sí, eso es todo.', de: 'Ja, das ist alles.' },
+      { speaker: 'ellos', es: '¿Tiene cédula?', de: 'Haben Sie einen Ausweis?' },
+      { speaker: 'tu', es: 'No, yo soy extranjero. Solo tengo pasaporte.', de: 'Nein, ich bin Ausländer. Ich habe nur einen Reisepass.' },
+      { speaker: 'ellos', es: 'No hay problema. ¿Cómo va a pagar?', de: 'Kein Problem. Wie bezahlen Sie?' },
+      { speaker: 'tu', es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+      { speaker: 'ellos', es: '¿A cuántas cuotas?', de: 'Auf wie viele Raten?' },
+      { speaker: 'tu', es: 'No, solo una.', de: 'Nein, nur eine.' },
+      { speaker: 'ellos', es: 'Listo. Ponga la tarjeta aquí.', de: 'Fertig. Legen Sie die Karte hier hin.', note: '"Ponga" = legen/setzen. Sie zeigen auf das Terminal.' },
+      { speaker: 'ellos', es: '¿Necesita bolsa?', de: 'Brauchen Sie eine Tüte?' },
+      { speaker: 'tu', es: 'Sí, por favor. / No, gracias.', de: 'Ja, bitte. / Nein, danke.' },
+      { speaker: 'ellos', es: 'Listo. ¡Que le vaya bien!', de: 'Fertig. Schönen Tag!' },
+      { speaker: 'tu', es: 'Gracias, igualmente.', de: 'Danke, gleichfalls.' },
     ],
     phrases: [
-      { es: 'Disculpe, ¿me puede ayudar?', de: 'Entschuldigung, können Sie mir helfen?' },
-      { es: 'Estoy buscando un filtro de agua.', de: 'Ich suche einen Wasserfilter.' },
-      { es: '¿Dónde están los filtros de agua?', de: 'Wo sind die Wasserfilter?' },
-      { es: '¿Cuál me recomienda?', de: 'Welchen empfehlen Sie mir?' },
-      { es: '¿Tiene repuestos para este filtro?', de: 'Haben Sie Ersatzfilter dafür?' },
-      { es: '¿Cuánto dura el filtro?', de: 'Wie lange hält der Filter?' },
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
-      { es: '¿Tiene algo más barato?', de: 'Haben Sie etwas Günstigeres?' },
-      { es: 'Me llevo este, por favor.', de: 'Ich nehme diesen, bitte.' },
+      { es: 'Sí, eso es todo.', de: 'Ja, das ist alles.' },
+      { es: 'Yo soy extranjero. Solo tengo pasaporte.', de: 'Ich bin Ausländer. Nur Reisepass.' },
+      { es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+      { es: 'No, solo una.', de: 'Nur eine Zahlung (keine Raten).' },
+      { es: 'Gracias, igualmente.', de: 'Danke, gleichfalls.' },
     ],
     vocab: [
+      { es: '¿Eso es todo? / ¿Solo esto?', de: 'Ist das alles? (Das fragen sie!)' },
+      { es: '¿Tiene cédula?', de: 'Haben Sie einen Ausweis? (Das fragen sie!)' },
+      { es: '¿Cómo va a pagar?', de: 'Wie bezahlen Sie? (Das fragen sie!)' },
+      { es: '¿A cuántas cuotas?', de: 'Auf wie viele Raten? (Das fragen sie!)' },
+      { es: '¿Necesita bolsa?', de: 'Brauchen Sie eine Tüte? (Das fragen sie!)' },
+      { es: 'Listo', de: 'Fertig / Ok (hört man ständig!)' },
       { es: 'el filtro de agua', de: 'der Wasserfilter' },
       { es: 'la jarra con filtro', de: 'die Filterkanne (wie Brita)' },
-      { es: 'el grifo', de: 'der Wasserhahn' },
-      { es: 'el repuesto', de: 'das Ersatzteil / der Ersatzfilter' },
-      { es: 'la caja', de: 'die Kasse' },
-      { es: '¿Dónde está la caja?', de: 'Wo ist die Kasse?' },
+    ]
+  },
+  {
+    id: 'churros', emoji: '🍩', title: 'Churros bestellen',
+    subtitle: 'Carrera nueve (9) # ciento cuarenta y cuatro - noventa y cinco (144-95)',
+    desc: 'Bestell Churros zum Mitnehmen oder Hieressen. Einfache Quest — kurzer Dialog!\n\n📍 Cra 9 #144-95 — Von zu Hause: nach Westen zur Cra 9, dann leicht nach Süden. ~10 Min.\n\n⬇ Kompletter Dialog unten.',
+    tags: [{ text: '10 Min.', cls: 'time' }, { text: '~10 Min. zu Fuß', cls: 'walk' }],
+    steps: [
+      'Dialog vorher üben',
+      'Reingehen, bestellen',
+      'Die Frage "para llevar o para comer aquí" beantworten',
+      'Bezahlen',
+    ],
+    dialog: [
+      { speaker: 'ellos', es: 'Buenas. ¿Qué le damos?', de: 'Hallo. Was darf es sein?', note: 'Oder: "¿Qué desea?" / "¿Qué va a pedir?"' },
+      { speaker: 'tu', es: 'Me regala unos churros, por favor.', de: 'Ich hätte gerne Churros, bitte.' },
+      { speaker: 'ellos', es: '¿Para llevar o para comer aquí?', de: 'Zum Mitnehmen oder zum Hieressen?' },
+      { speaker: 'tu', es: 'Para llevar, por favor.', de: 'Zum Mitnehmen, bitte.', note: 'Oder: "Para comer aquí." (Zum Hieressen.)' },
+      { speaker: 'ellos', es: '¿Algo más?', de: 'Noch etwas?' },
+      { speaker: 'tu', es: 'No, eso es todo.', de: 'Nein, das ist alles.' },
+      { speaker: 'ellos', es: '¿Cuánto es? Son ocho mil.', de: 'Das macht 8.000 COP.' },
+      { speaker: 'tu', es: 'Yo pago con tarjeta.', de: 'Ich bezahle mit Karte.' },
+      { speaker: 'ellos', es: '¿A cuántas cuotas?', de: 'Auf wie viele Raten?' },
+      { speaker: 'tu', es: 'No, solo una.', de: 'Nur eine.' },
+      { speaker: 'tu', es: 'Gracias. Chao.', de: 'Danke. Tschüss.' },
+    ],
+    phrases: [
+      { es: 'Me regala unos churros, por favor.', de: 'Churros, bitte.' },
+      { es: 'Para llevar, por favor.', de: 'Zum Mitnehmen.' },
+      { es: 'Para comer aquí.', de: 'Zum Hieressen.' },
+      { es: 'No, eso es todo.', de: 'Das ist alles.' },
+    ],
+    vocab: [
+      { es: '¿Qué le damos? / ¿Qué desea?', de: 'Was darf es sein? (Das fragen sie!)' },
+      { es: '¿Para llevar o para comer aquí?', de: 'Mitnehmen oder Hieressen? (Das fragen sie!)' },
+      { es: '¿Algo más?', de: 'Noch etwas? (Das fragen sie!)' },
+      { es: 'Son ocho mil.', de: 'Das macht 8.000. (So sagen sie den Preis)' },
     ]
   },
   {
@@ -841,7 +931,7 @@ const QUESTS = [
       { es: 'Es para un rompecabezas de mil piezas.', de: 'Es ist für ein 1000-Teile-Puzzle.' },
       { es: '¿Tiene uno más grande?', de: 'Haben Sie einen größeren?' },
       { es: '¿Dónde está la papelería?', de: 'Wo ist die Schreibwarenabteilung?' },
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+      { es: '¿Cuánto es?', de: 'Wie viel kostet es?' },
     ],
     vocab: [
       { es: 'el cartón paja', de: 'fester Karton / Pappe' },
@@ -865,7 +955,7 @@ const QUESTS = [
       'Eine Libra (500g) bestellen',
     ],
     phrases: [
-      { es: '¿Cuánto vale la libra de aguacate?', de: 'Was kostet das Pfund Avocado?' },
+      { es: '¿Cuánto es la libra de aguacate?', de: 'Was kostet das Pfund Avocado?' },
       { es: '¿Están maduros?', de: 'Sind die reif?' },
       { es: 'Deme una libra de bananos, por favor.', de: 'Geben Sie mir ein Pfund Bananen.' },
       { es: 'Y dos mangos, por favor.', de: 'Und zwei Mangos, bitte.' },
@@ -996,7 +1086,7 @@ const QUESTS = [
       { es: '¿Tiene curitas?', de: 'Haben Sie Pflaster?' },
       { es: '¿Tiene crema para las manos?', de: 'Haben Sie Handcreme?' },
       { es: '¿Tiene pasta de dientes?', de: 'Haben Sie Zahnpasta?' },
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+      { es: '¿Cuánto es?', de: 'Wie viel kostet es?' },
       { es: 'Me llevo este, por favor.', de: 'Ich nehme diesen.' },
     ],
     vocab: [
@@ -1477,6 +1567,24 @@ function showQuest(id) {
   document.getElementById('quest-checklist').innerHTML = q.steps.map(s => `
     <div class="checklist-item"><span class="check">▸</span><span>${s}</span></div>
   `).join('');
+
+  // Render dialog if available
+  const dialogEl = document.getElementById('quest-dialog-section');
+  if (q.dialog && q.dialog.length > 0) {
+    dialogEl.innerHTML = `<h2>Kompletter Dialog</h2><div class="dialog-section">` +
+      q.dialog.map(d => `
+        <div class="dialog-line">
+          <span class="speaker ${d.speaker}">${d.speaker === 'tu' ? 'DU' : 'SIE'}</span>
+          <div class="dialog-bubble">
+            <div class="d-es">${d.es}</div>
+            <div class="d-de">${d.de}</div>
+            ${d.note ? `<div class="d-note">${d.note}</div>` : ''}
+          </div>
+        </div>
+      `).join('') + `</div>`;
+  } else {
+    dialogEl.innerHTML = '';
+  }
   currentQuestPhrases = q.phrases.concat(q.vocab);
   currentQuestId = q.id;
   showDownloadBtn('quest', q.id);

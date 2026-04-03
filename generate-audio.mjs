@@ -67,8 +67,8 @@ const AUDIO_SETS = [
     id: 'einkaufen',
     name: 'Einkaufen',
     phrases: [
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
-      { es: '¿Cuánto vale la libra?', de: 'Was kostet das Pfund?' },
+      { es: '¿Cuánto es?', de: 'Wie viel kostet es?' },
+      { es: '¿Cuánto es la libra?', de: 'Was kostet das Pfund?' },
       { es: 'Deme una libra, por favor.', de: 'Geben Sie mir ein Pfund, bitte.' },
       { es: '¿Tiene aguacate?', de: 'Haben Sie Avocado?' },
       { es: '¿Está maduro?', de: 'Ist das reif?' },
@@ -98,7 +98,7 @@ const AUDIO_SETS = [
     phrases: [
       { es: 'A la Calle ciento cuarenta y seis con Carrera doce, por favor.', de: 'Zur Calle 146 mit Carrera 12, bitte.' },
       { es: 'Aquí está bien, gracias.', de: 'Hier ist gut, danke.' },
-      { es: '¿Cuánto vale hasta el centro?', de: 'Wie viel kostet es bis zum Zentrum?' },
+      { es: '¿Cuánto es hasta el centro?', de: 'Wie viel kostet es bis zum Zentrum?' },
       { es: 'Siga derecho.', de: 'Geradeaus weiter.' },
       { es: 'A la derecha.', de: 'Nach rechts.' },
       { es: 'A la izquierda.', de: 'Nach links.' },
@@ -140,7 +140,7 @@ const AUDIO_SETS = [
       { es: '¿Dónde están los filtros de agua?', de: 'Wo sind die Wasserfilter?' },
       { es: '¿Cuál me recomienda?', de: 'Welchen empfehlen Sie mir?' },
       { es: '¿Tiene repuestos?', de: 'Haben Sie Ersatzteile?' },
-      { es: '¿Cuánto vale?', de: 'Wie viel kostet es?' },
+      { es: '¿Cuánto es?', de: 'Wie viel kostet es?' },
       { es: 'Me llevo este, por favor.', de: 'Ich nehme diesen, bitte.' },
     ]
   },
@@ -188,9 +188,13 @@ async function findVoices() {
   console.log('\n  Top Deutsch-Stimmen:');
   deArr.slice(0, 10).forEach(v => console.log(`    ${v.id} — ${v.name} (${v.gender || '?'})`));
 
-  // Auto-select: first available
-  VOICE_ES = esArr[0]?.id;
-  VOICE_DE = deArr[0]?.id;
+  // Select specific voices for best quality
+  // Spanish: Marta - Friendly Guide (clear, approachable)
+  // German: Sebastian - Orator (clear, professional)
+  const esTarget = esArr.find(v => v.name?.includes('Marta')) || esArr[0];
+  const deTarget = deArr.find(v => v.name?.includes('Sebastian')) || deArr[0];
+  VOICE_ES = esTarget?.id;
+  VOICE_DE = deTarget?.id;
 
   if (!VOICE_ES || !VOICE_DE) {
     console.error('Keine Stimmen gefunden! Prüfe API Key und Netzwerk.');
@@ -219,7 +223,7 @@ async function ttsBytes(text, lang, speed) {
         encoding: 'pcm_s16le',
         sample_rate: 24000,
       },
-      ...(speed ? { generation_config: { speed } } : {}),
+      ...(speed != null ? { generation_config: { speed } } : {}),
     }),
   });
 
@@ -277,7 +281,8 @@ async function generateAudioForSet(set) {
     console.log(`  ${i + 1}/${set.phrases.length}: "${p.es.substring(0, 40)}..."`);
 
     // 1. Spanish slow
-    const esSlow = extractPcmFromWav(await ttsBytes(p.es, 'es', 'slowest'));
+    // speed: 0.6 = slowest, 1.0 = normal, 1.5 = fastest
+    const esSlow = extractPcmFromWav(await ttsBytes(p.es, 'es', 0.7));
     pcmChunks.push(esSlow);
     pcmChunks.push(PAUSE_SHORT);
 
