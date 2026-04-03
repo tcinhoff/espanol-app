@@ -289,6 +289,9 @@ nav button .icon { font-size: 22px; }
     <button class="audio-btn" id="spick-audio-btn" onclick="toggleSpickAudio()">
       <span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen
     </button>
+    <a class="audio-btn" id="spick-download-btn" style="display:none;text-decoration:none;" download>
+      <span class="audio-icon">⬇</span> Audio herunterladen (~5 Min.)
+    </a>
     <div class="audio-speed" id="spick-audio-speed" style="display:none;">
       <span>Tempo:</span>
       <button class="speed-btn" onclick="setSpeed(0.6)">Langsam</button>
@@ -361,6 +364,9 @@ nav button .icon { font-size: 22px; }
     <button class="audio-btn" id="quest-audio-btn" onclick="toggleQuestAudio()">
       <span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen
     </button>
+    <a class="audio-btn" id="quest-download-btn" style="display:none;text-decoration:none;" download>
+      <span class="audio-icon">⬇</span> Audio herunterladen (~5 Min.)
+    </a>
     <div class="audio-speed" id="quest-audio-speed" style="display:none;">
       <span>Tempo:</span>
       <button class="speed-btn" onclick="setSpeed(0.6)">Langsam</button>
@@ -1082,6 +1088,8 @@ function renderSpickOverview() {
 function showSituation(id) {
   const s = SPICKZETTEL.find(x => x.id === id);
   currentSpickPhrases = s.phrases;
+  currentSpickId = id;
+  showDownloadBtn('spick', id);
   document.getElementById('spick-overview').style.display = 'none';
   document.getElementById('spick-detail').style.display = 'block';
   document.getElementById('spick-detail-title').textContent = s.emoji + ' ' + s.label;
@@ -1368,15 +1376,74 @@ function setSpeed(s) {
 }
 
 let currentSpickPhrases = [];
+// Cartesia pre-generated audio: try to play WAV file, fallback to browser TTS
+let cartesiaPlayer = null;
+
+function tryPlayCartesia(audioId, ctx, phrases) {
+  const url = `./audio/${audioId}.wav`;
+  const audio = new Audio(url);
+  cartesiaPlayer = audio;
+
+  const btn = document.getElementById(ctx + '-audio-btn');
+  const status = document.getElementById(ctx + '-audio-status');
+
+  audio.addEventListener('canplaythrough', () => {
+    audioPlaying = true;
+    btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
+    btn.classList.add('playing');
+    status.textContent = 'Cartesia Audio läuft...';
+    audio.play();
+  }, { once: true });
+
+  audio.addEventListener('ended', () => {
+    audioPlaying = false;
+    btn.innerHTML = '<span class="audio-icon">🎧</span> Hands-free: Vorlesen lassen';
+    btn.classList.remove('playing');
+    status.textContent = '';
+    cartesiaPlayer = null;
+  });
+
+  audio.addEventListener('error', () => {
+    // No Cartesia audio available, fallback to browser TTS
+    cartesiaPlayer = null;
+    playPhrases(phrases, ctx);
+  }, { once: true });
+}
+
+function stopCartesia() {
+  if (cartesiaPlayer) {
+    cartesiaPlayer.pause();
+    cartesiaPlayer.currentTime = 0;
+    cartesiaPlayer = null;
+  }
+}
+
+let currentSpickId = '';
 function toggleSpickAudio() {
-  if (audioPlaying) { stopAudio(); return; }
-  playPhrases(currentSpickPhrases, 'spick');
+  if (audioPlaying) { stopAudio(); stopCartesia(); return; }
+  tryPlayCartesia(currentSpickId, 'spick', currentSpickPhrases);
 }
 
 let currentQuestPhrases = [];
+let currentQuestId = '';
 function toggleQuestAudio() {
-  if (audioPlaying) { stopAudio(); return; }
-  playPhrases(currentQuestPhrases, 'quest');
+  if (audioPlaying) { stopAudio(); stopCartesia(); return; }
+  tryPlayCartesia(currentQuestId, 'quest', currentQuestPhrases);
+}
+
+function showDownloadBtn(ctx, audioId) {
+  const btn = document.getElementById(ctx + '-download-btn');
+  const url = `./audio/${audioId}.wav`;
+  // Check if audio file exists
+  fetch(url, { method: 'HEAD' }).then(r => {
+    if (r.ok) {
+      btn.href = url;
+      btn.download = `espanol-${audioId}.wav`;
+      btn.style.display = 'flex';
+    } else {
+      btn.style.display = 'none';
+    }
+  }).catch(() => { btn.style.display = 'none'; });
 }
 
 // ============================================================
@@ -1411,6 +1478,8 @@ function showQuest(id) {
     <div class="checklist-item"><span class="check">▸</span><span>${s}</span></div>
   `).join('');
   currentQuestPhrases = q.phrases.concat(q.vocab);
+  currentQuestId = q.id;
+  showDownloadBtn('quest', q.id);
   document.getElementById('quest-phrases').innerHTML = q.phrases.map(p => `
     <div class="phrase-item"><div class="es">${p.es}</div><div class="de">${p.de}</div></div>
   `).join('');
