@@ -1401,12 +1401,20 @@ let currentAudioContext = ''; // 'spick' or 'quest'
 function speak(text, lang, rate) {
   return new Promise((resolve, reject) => {
     if (audioAbort) { reject('aborted'); return; }
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = rate || audioSpeed;
-    u.onend = resolve;
-    u.onerror = e => e.error === 'canceled' ? reject('aborted') : resolve();
-    speechSynthesis.speak(u);
+    // Chrome bug: speechSynthesis can get stuck, cancel first
+    speechSynthesis.cancel();
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang;
+      u.rate = rate || audioSpeed;
+      u.onend = () => { resolve(); };
+      u.onerror = e => {
+        console.log('TTS error:', e.error, text);
+        e.error === 'canceled' ? reject('aborted') : resolve();
+      };
+      speechSynthesis.speak(u);
+      console.log('TTS speaking:', text.substring(0, 30), lang);
+    }, 100);
   });
 }
 
@@ -1512,25 +1520,24 @@ let currentSpickPhrases = [];
 // Cartesia pre-generated audio: try to play WAV file, fallback to browser TTS
 let cartesiaPlayer = null;
 
-async function tryPlayCartesia(audioId, ctx, phrases) {
+function tryPlayCartesia(audioId, ctx, phrases) {
   const url = `./audio/${audioId}.mp3`;
   const btn = document.getElementById(ctx + '-audio-btn');
   const status = document.getElementById(ctx + '-audio-status');
 
-  // First check if the audio file exists (use Range to avoid downloading whole file)
-  try {
-    const check = await fetch(url, { method: 'GET', headers: { 'Range': 'bytes=0-0' } });
-    if (!check.ok && check.status !== 206) throw new Error('not found');
-  } catch {
-    console.log(`Audio ${url} nicht gefunden, nutze Browser-TTS`);
-    status.textContent = 'Kein Audio vorhanden, nutze Browser-Stimme...';
-    playPhrases(phrases, ctx);
-    return;
-  }
-
-  // File exists — create player and play
   const audio = new Audio(url);
   cartesiaPlayer = audio;
+  let started = false;
+
+  audio.addEventListener('canplay', () => {
+    if (started) return;
+    started = true;
+    audio.play();
+    audioPlaying = true;
+    btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
+    btn.classList.add('playing');
+    status.textContent = 'Cartesia Audio läuft...';
+  }, { once: true });
 
   audio.addEventListener('ended', () => {
     audioPlaying = false;
@@ -1540,18 +1547,28 @@ async function tryPlayCartesia(audioId, ctx, phrases) {
     cartesiaPlayer = null;
   });
 
-  try {
-    await audio.play();
-    audioPlaying = true;
-    btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
-    btn.classList.add('playing');
-    status.textContent = 'Cartesia Audio läuft...';
-  } catch (err) {
-    console.log('Audio play() fehlgeschlagen:', err);
+  audio.addEventListener('error', () => {
+    if (started) return;
+    started = true;
+    console.log(`Audio ${url} nicht verfügbar, nutze Browser-TTS`);
     cartesiaPlayer = null;
-    status.textContent = 'Audio-Fehler, nutze Browser-Stimme...';
+    status.textContent = 'Nutze Browser-Stimme...';
     playPhrases(phrases, ctx);
-  }
+  }, { once: true });
+
+  // Trigger loading
+  audio.load();
+
+  // Safety timeout: if nothing happens in 3 seconds, fall back to TTS
+  setTimeout(() => {
+    if (!started) {
+      started = true;
+      console.log('Audio timeout, nutze Browser-TTS');
+      cartesiaPlayer = null;
+      status.textContent = 'Nutze Browser-Stimme...';
+      playPhrases(phrases, ctx);
+    }
+  }, 3000);
 }
 
 function stopCartesia() {
