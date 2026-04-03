@@ -1,4 +1,4 @@
-const CACHE_NAME = 'espanol-v5';
+const CACHE_NAME = 'espanol-v6';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -15,11 +15,16 @@ self.addEventListener('activate', e => {
 
 // Network-first strategy: always try fresh version, fall back to cache for offline
 self.addEventListener('fetch', e => {
+  // Only handle http/https GET requests — skip chrome-extension://, HEAD, etc.
+  if (e.request.method !== 'GET' || !e.request.url.startsWith('http')) return;
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
         return res;
       })
       .catch(() => caches.match(e.request))

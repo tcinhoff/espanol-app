@@ -1512,33 +1512,25 @@ let currentSpickPhrases = [];
 // Cartesia pre-generated audio: try to play WAV file, fallback to browser TTS
 let cartesiaPlayer = null;
 
-function tryPlayCartesia(audioId, ctx, phrases) {
+async function tryPlayCartesia(audioId, ctx, phrases) {
   const url = `./audio/${audioId}.mp3`;
-  const audio = new Audio();
-  cartesiaPlayer = audio;
-
   const btn = document.getElementById(ctx + '-audio-btn');
   const status = document.getElementById(ctx + '-audio-status');
 
-  // iOS requires play() in direct response to user tap — set src and play immediately
-  audio.src = url;
-  audio.preload = 'auto';
-
-  // Start playback immediately (iOS needs this in the click handler chain)
-  const playPromise = audio.play();
-
-  if (playPromise !== undefined) {
-    playPromise.then(() => {
-      audioPlaying = true;
-      btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
-      btn.classList.add('playing');
-      status.textContent = 'Cartesia Audio läuft...';
-    }).catch(err => {
-      console.log('Audio play failed, falling back to TTS:', err);
-      cartesiaPlayer = null;
-      playPhrases(phrases, ctx);
-    });
+  // First check if the audio file exists (use Range to avoid downloading whole file)
+  try {
+    const check = await fetch(url, { method: 'GET', headers: { 'Range': 'bytes=0-0' } });
+    if (!check.ok && check.status !== 206) throw new Error('not found');
+  } catch {
+    console.log(`Audio ${url} nicht gefunden, nutze Browser-TTS`);
+    status.textContent = 'Kein Audio vorhanden, nutze Browser-Stimme...';
+    playPhrases(phrases, ctx);
+    return;
   }
+
+  // File exists — create player and play
+  const audio = new Audio(url);
+  cartesiaPlayer = audio;
 
   audio.addEventListener('ended', () => {
     audioPlaying = false;
@@ -1548,11 +1540,18 @@ function tryPlayCartesia(audioId, ctx, phrases) {
     cartesiaPlayer = null;
   });
 
-  audio.addEventListener('error', () => {
-    console.log('Audio file not found, falling back to TTS');
+  try {
+    await audio.play();
+    audioPlaying = true;
+    btn.innerHTML = '<span class="audio-icon">⏹</span> Stoppen';
+    btn.classList.add('playing');
+    status.textContent = 'Cartesia Audio läuft...';
+  } catch (err) {
+    console.log('Audio play() fehlgeschlagen:', err);
     cartesiaPlayer = null;
+    status.textContent = 'Audio-Fehler, nutze Browser-Stimme...';
     playPhrases(phrases, ctx);
-  }, { once: true });
+  }
 }
 
 function stopCartesia() {
@@ -1579,9 +1578,9 @@ function toggleQuestAudio() {
 function showDownloadBtn(ctx, audioId) {
   const btn = document.getElementById(ctx + '-download-btn');
   const url = `./audio/${audioId}.mp3`;
-  // Check if audio file exists
-  fetch(url, { method: 'HEAD' }).then(r => {
-    if (r.ok) {
+  // Check if audio file exists via GET with range (avoids HEAD issues with SW)
+  fetch(url, { method: 'GET', headers: { 'Range': 'bytes=0-0' } }).then(r => {
+    if (r.ok || r.status === 206) {
       btn.href = url;
       btn.download = `espanol-${audioId}.mp3`;
       btn.style.display = 'flex';
