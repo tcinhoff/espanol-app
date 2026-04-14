@@ -151,6 +151,26 @@ nav button .icon { font-size: 22px; }
 .btn-wrong { background: var(--red); color: #fff; }
 .btn-right { background: var(--green); color: #1a1a2e; }
 
+.mc-option {
+  padding: 14px; border: 2px solid #ffffff20; border-radius: 12px;
+  background: var(--bg); color: var(--text); font-size: 16px; cursor: pointer;
+  text-align: left; transition: border-color .2s, background .2s;
+}
+.mc-option:active { transform: scale(.98); }
+.mc-option.correct { border-color: var(--green); background: #4ade8015; }
+.mc-option.wrong { border-color: var(--red); background: #f8717115; }
+.mc-option.reveal { border-color: var(--green); opacity: .6; }
+.mc-option:disabled { cursor: default; }
+
+.stage-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+}
+.stage-badge.s1 { background: #3b82f620; color: #60a5fa; }
+.stage-badge.s2 { background: #f59e0b20; color: #fbbf24; }
+.stage-badge.s3 { background: #8b5cf620; color: #a78bfa; }
+.stage-badge.s4 { background: #4ade8020; color: var(--green); }
+
 .card-counter {
   text-align: center; font-size: 14px; color: var(--text2); margin-bottom: 8px;
 }
@@ -352,22 +372,67 @@ nav button .icon { font-size: 22px; }
   <div id="deck-session" style="display:none">
     <button class="back-btn" onclick="showDeckOverview()">&#8592; Zurück</button>
     <div class="card-counter" id="card-counter"></div>
-    <div class="flashcard-container">
-      <div class="flashcard" id="flashcard" onclick="flipCard()">
-        <div class="front">
-          <span class="lang-label" id="fc-front-lang"></span>
-          <div class="word" id="fc-front-word"></div>
-        </div>
-        <div class="back">
-          <span class="lang-label" id="fc-back-lang"></span>
-          <div class="word" id="fc-back-word"></div>
-          <div class="hint" id="fc-hint"></div>
-        </div>
+    <div id="stage-label" style="text-align:center;margin-bottom:8px;"></div>
+
+    <!-- Stage 1: Multiple Choice (Erkennen) -->
+    <div id="stage-mc" style="display:none">
+      <div class="quiz-box">
+        <div class="direction" id="mc-direction"></div>
+        <div class="question" id="mc-question"></div>
+        <div id="mc-options" style="display:flex;flex-direction:column;gap:10px;margin-top:16px;"></div>
+        <div class="quiz-feedback" id="mc-feedback"></div>
       </div>
     </div>
-    <div class="card-actions" id="card-actions" style="display:none">
-      <button class="btn-wrong" onclick="markCard(false)">Nochmal</button>
-      <button class="btn-right" onclick="markCard(true)">Gewusst!</button>
+
+    <!-- Stage 2: Flashcard (Erkennen & Bestätigen) -->
+    <div id="stage-flash" style="display:none">
+      <div class="flashcard-container">
+        <div class="flashcard" id="flashcard" onclick="flipCard()">
+          <div class="front">
+            <span class="lang-label" id="fc-front-lang"></span>
+            <div class="word" id="fc-front-word"></div>
+          </div>
+          <div class="back">
+            <span class="lang-label" id="fc-back-lang"></span>
+            <div class="word" id="fc-back-word"></div>
+            <div class="hint" id="fc-hint"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions" id="card-actions" style="display:none">
+        <button class="btn-wrong" onclick="markCard(false)">Nochmal</button>
+        <button class="btn-right" onclick="markCard(true)">Gewusst!</button>
+      </div>
+    </div>
+
+    <!-- Stage 3: Tippen ES→DE -->
+    <div id="stage-type-de" style="display:none">
+      <div class="quiz-box">
+        <div class="direction">Español → Deutsch</div>
+        <div class="question" id="type-de-question"></div>
+        <input class="quiz-input" id="type-de-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Deutsch tippen...">
+        <div class="quiz-feedback" id="type-de-feedback"></div>
+        <button class="quiz-next" id="type-de-next" onclick="typeDeCheck()">Prüfen</button>
+      </div>
+    </div>
+
+    <!-- Stage 4: Tippen DE→ES (Produzieren) -->
+    <div id="stage-type-es" style="display:none">
+      <div class="quiz-box">
+        <div class="direction">Deutsch → Español</div>
+        <div class="question" id="type-es-question"></div>
+        <input class="quiz-input" id="type-es-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Español tippen...">
+        <div class="quiz-feedback" id="type-es-feedback"></div>
+        <button class="quiz-next" id="type-es-next" onclick="typeEsCheck()">Prüfen</button>
+      </div>
+    </div>
+
+    <!-- Session Complete -->
+    <div id="stage-done" style="display:none;text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:16px;">🎉</div>
+      <h2 style="margin-bottom:8px;">Runde fertig!</h2>
+      <p id="done-stats" style="color:var(--text2);margin-bottom:20px;"></p>
+      <button onclick="showDeckOverview()" style="padding:12px 24px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;">Zurück zur Übersicht</button>
     </div>
   </div>
 </div>
@@ -1306,20 +1371,40 @@ function showSpickOverview() {
 }
 
 // ============================================================
-//  VOKABELTRAINER
+//  VOKABELTRAINER — Spaced Repetition (4 Stufen)
+//
+//  Stufe 0: Neu (noch nie gesehen)
+//  Stufe 1: Erkennen — Multiple Choice (4 Optionen)
+//  Stufe 2: Flashcard — ES↔DE umdrehen und selbst bewerten
+//  Stufe 3: Tippen — Spanisch sehen → Deutsch tippen
+//  Stufe 4: Produzieren — Deutsch sehen → Spanisch tippen → Gemeistert!
+//
+//  Richtig → nächste Stufe. Falsch → eine Stufe zurück (min 1).
 // ============================================================
+
+const STAGE_NAMES = ['Neu', 'Erkennen', 'Flashcard', 'ES→DE Tippen', 'DE→ES Tippen'];
+const STAGE_CLASSES = ['', 's1', 's2', 's3', 's4'];
+
 function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
   el.innerHTML = DECKS.map(d => {
-    const learned = d.cards.filter((_, i) => (progress[d.id + '_' + i] || 0) >= 1).length;
-    const pct = Math.round(learned / d.cards.length * 100);
-    const color = pct === 100 ? 'var(--green)' : pct > 50 ? 'var(--orange)' : 'var(--accent)';
+    let mastered = 0, inProgress = 0;
+    d.cards.forEach((_, i) => {
+      const s = progress[d.id + '_' + i] || 0;
+      if (s >= 4) mastered++;
+      else if (s >= 1) inProgress++;
+    });
+    const pct = Math.round(mastered / d.cards.length * 100);
+    const color = pct === 100 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--accent)';
+    const sub = mastered > 0 || inProgress > 0
+      ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
+      : `${d.cards.length} Karten — starte jetzt!`;
     return `
       <div class="deck-item" onclick="startDeck('${d.id}')">
         <div class="info">
           <div class="name">${d.icon} ${d.name}</div>
-          <div class="count">${d.cards.length} Karten — ${learned} gelernt</div>
+          <div class="count">${sub}</div>
         </div>
         <div class="progress-ring" style="border:3px solid ${color};color:${color}">${pct}%</div>
       </div>`;
@@ -1329,35 +1414,132 @@ function renderDecks() {
 function startDeck(id) {
   currentDeck = DECKS.find(d => d.id === id);
   const progress = getProgress();
-  // Sort: least practiced first
+  // Build session: pick cards that aren't mastered, prioritize lowest stage
   deckCards = currentDeck.cards.map((c, i) => ({
     es: c[0], de: c[1], idx: i,
-    score: progress[currentDeck.id + '_' + i] || 0
-  })).sort((a, b) => a.score - b.score);
+    stage: progress[currentDeck.id + '_' + i] || 0
+  }))
+  .filter(c => c.stage < 4) // exclude mastered
+  .sort((a, b) => a.stage - b.stage); // lowest stage first
+
+  // Limit session to 10 cards
+  deckCards = deckCards.slice(0, 10);
+
+  if (deckCards.length === 0) {
+    // All mastered — offer review
+    deckCards = currentDeck.cards.map((c, i) => ({
+      es: c[0], de: c[1], idx: i, stage: 3 // review at type-de level
+    })).sort(() => Math.random() - 0.5).slice(0, 10);
+  }
+
   deckIndex = 0;
+  sessionCorrect = 0;
+  sessionTotal = 0;
   document.getElementById('deck-overview').style.display = 'none';
   document.getElementById('deck-session').style.display = 'block';
-  showCard();
+  showNextCard();
 }
+
+let sessionCorrect = 0, sessionTotal = 0;
 
 function showDeckOverview() {
   document.getElementById('deck-overview').style.display = '';
   document.getElementById('deck-session').style.display = 'none';
+  hideAllStages();
   renderDecks();
 }
 
-let _currentCardBack = { lang: '', word: '' };
+function hideAllStages() {
+  ['stage-mc','stage-flash','stage-type-de','stage-type-es','stage-done'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+}
 
-function showCard() {
+function showNextCard() {
+  hideAllStages();
   if (deckIndex >= deckCards.length) {
-    showDeckOverview();
+    // Session done
+    document.getElementById('stage-done').style.display = 'block';
+    document.getElementById('done-stats').textContent =
+      `${sessionCorrect} von ${sessionTotal} richtig`;
+    document.getElementById('card-counter').textContent = '';
+    document.getElementById('stage-label').innerHTML = '';
     return;
   }
+
   const card = deckCards[deckIndex];
+  const stage = Math.max(card.stage, 1); // at least stage 1
+  document.getElementById('card-counter').textContent = `${deckIndex + 1} / ${deckCards.length}`;
+  document.getElementById('stage-label').innerHTML =
+    `<span class="stage-badge ${STAGE_CLASSES[stage]}">${STAGE_NAMES[stage]}</span>`;
+
+  if (stage === 1) showMC(card);
+  else if (stage === 2) showFlash(card);
+  else if (stage === 3) showTypeDe(card);
+  else showTypeEs(card);
+}
+
+// ---- Stage 1: Multiple Choice ----
+function showMC(card) {
+  document.getElementById('stage-mc').style.display = 'block';
+  const esFirst = Math.random() > 0.5;
+  document.getElementById('mc-direction').textContent = esFirst ? 'Español → Deutsch' : 'Deutsch → Español';
+  document.getElementById('mc-question').textContent = esFirst ? card.es : card.de;
+  document.getElementById('mc-feedback').className = 'quiz-feedback';
+  document.getElementById('mc-feedback').textContent = '';
+
+  // Build 4 options: 1 correct + 3 random wrong
+  const correctAnswer = esFirst ? card.de : card.es;
+  const allAnswers = [];
+  currentDeck.cards.forEach(c => {
+    const a = esFirst ? c[1] : c[0];
+    if (a !== correctAnswer) allAnswers.push(a);
+  });
+  // If not enough cards in deck, pull from other decks
+  if (allAnswers.length < 3) {
+    DECKS.forEach(d => d.cards.forEach(c => {
+      const a = esFirst ? c[1] : c[0];
+      if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
+    }));
+  }
+  const wrongs = allAnswers.sort(() => Math.random() - 0.5).slice(0, 3);
+  const options = [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
+
+  const el = document.getElementById('mc-options');
+  el.innerHTML = options.map((o, i) => `
+    <button class="mc-option" id="mc-opt-${i}" onclick="checkMC(${i}, '${correctAnswer.replace(/'/g, "\\'")}')">${o}</button>
+  `).join('');
+}
+
+function checkMC(idx, correct) {
+  sessionTotal++;
+  const btns = document.querySelectorAll('.mc-option');
+  btns.forEach(b => b.disabled = true);
+
+  const selected = document.getElementById('mc-opt-' + idx);
+  const isCorrect = selected.textContent === correct;
+
+  if (isCorrect) {
+    sessionCorrect++;
+    selected.classList.add('correct');
+    advanceCard(true);
+  } else {
+    selected.classList.add('wrong');
+    btns.forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
+    advanceCard(false);
+  }
+
+  setTimeout(() => { deckIndex++; showNextCard(); }, 1200);
+}
+
+// ---- Stage 2: Flashcard ----
+let _currentCardBack = { lang: '', word: '' };
+
+function showFlash(card) {
+  document.getElementById('stage-flash').style.display = 'block';
   const showEsFirst = Math.random() > 0.5;
   document.getElementById('fc-front-lang').textContent = showEsFirst ? 'Español' : 'Deutsch';
   document.getElementById('fc-front-word').textContent = showEsFirst ? card.es : card.de;
-  // Don't put the answer in the DOM yet — prevents any CSS leak
   _currentCardBack = {
     lang: showEsFirst ? 'Deutsch' : 'Español',
     word: showEsFirst ? card.de : card.es,
@@ -1367,11 +1549,9 @@ function showCard() {
   document.getElementById('fc-hint').textContent = '';
   document.getElementById('flashcard').classList.remove('flipped');
   document.getElementById('card-actions').style.display = 'none';
-  document.getElementById('card-counter').textContent = `${deckIndex + 1} / ${deckCards.length}`;
 }
 
 function flipCard() {
-  // Only now reveal the answer
   document.getElementById('fc-back-lang').textContent = _currentCardBack.lang;
   document.getElementById('fc-back-word').textContent = _currentCardBack.word;
   document.getElementById('flashcard').classList.add('flipped');
@@ -1379,18 +1559,120 @@ function flipCard() {
 }
 
 function markCard(correct) {
+  sessionTotal++;
+  if (correct) sessionCorrect++;
+  advanceCard(correct);
+  deckIndex++;
+  showNextCard();
+}
+
+// ---- Stage 3: Type DE (see ES, type DE) ----
+function showTypeDe(card) {
+  document.getElementById('stage-type-de').style.display = 'block';
+  document.getElementById('type-de-question').textContent = card.es;
+  const input = document.getElementById('type-de-input');
+  input.value = '';
+  input.className = 'quiz-input';
+  input.focus();
+  document.getElementById('type-de-feedback').className = 'quiz-feedback';
+  document.getElementById('type-de-feedback').textContent = '';
+  const btn = document.getElementById('type-de-next');
+  btn.textContent = 'Prüfen';
+  btn.className = 'quiz-next show';
+  btn.onclick = typeDeCheck;
+}
+
+function typeDeCheck() {
+  const card = deckCards[deckIndex];
+  const input = document.getElementById('type-de-input');
+  const fb = document.getElementById('type-de-feedback');
+  const answer = input.value.trim();
+  if (!answer) return;
+
+  sessionTotal++;
+  const correct = normalize(answer) === normalize(card.de);
+
+  if (correct) {
+    sessionCorrect++;
+    input.className = 'quiz-input correct';
+    fb.className = 'quiz-feedback correct show';
+    fb.textContent = 'Richtig!';
+  } else {
+    input.className = 'quiz-input wrong';
+    fb.className = 'quiz-feedback wrong show';
+    fb.textContent = card.de;
+  }
+  advanceCard(correct);
+
+  const btn = document.getElementById('type-de-next');
+  btn.textContent = 'Weiter';
+  btn.className = 'quiz-next show';
+  btn.onclick = () => { deckIndex++; showNextCard(); };
+}
+
+// ---- Stage 4: Type ES (see DE, type ES — Produce!) ----
+function showTypeEs(card) {
+  document.getElementById('stage-type-es').style.display = 'block';
+  document.getElementById('type-es-question').textContent = card.de;
+  const input = document.getElementById('type-es-input');
+  input.value = '';
+  input.className = 'quiz-input';
+  input.focus();
+  document.getElementById('type-es-feedback').className = 'quiz-feedback';
+  document.getElementById('type-es-feedback').textContent = '';
+  const btn = document.getElementById('type-es-next');
+  btn.textContent = 'Prüfen';
+  btn.className = 'quiz-next show';
+  btn.onclick = typeEsCheck;
+}
+
+function typeEsCheck() {
+  const card = deckCards[deckIndex];
+  const input = document.getElementById('type-es-input');
+  const fb = document.getElementById('type-es-feedback');
+  const answer = input.value.trim();
+  if (!answer) return;
+
+  sessionTotal++;
+  const correct = normalize(answer) === normalize(card.es);
+
+  if (correct) {
+    sessionCorrect++;
+    input.className = 'quiz-input correct';
+    fb.className = 'quiz-feedback correct show';
+    fb.textContent = 'Richtig! 🎉';
+  } else {
+    input.className = 'quiz-input wrong';
+    fb.className = 'quiz-feedback wrong show';
+    fb.textContent = card.es;
+  }
+  advanceCard(correct);
+
+  const btn = document.getElementById('type-es-next');
+  btn.textContent = 'Weiter';
+  btn.className = 'quiz-next show';
+  btn.onclick = () => { deckIndex++; showNextCard(); };
+}
+
+// ---- Advance / Demote ----
+function advanceCard(correct) {
   const card = deckCards[deckIndex];
   const progress = getProgress();
   const key = currentDeck.id + '_' + card.idx;
   const cur = progress[key] || 0;
-  progress[key] = correct ? Math.min(cur + 1, 5) : Math.max(cur - 1, 0);
-  saveProgress(progress);
-  if (!correct) {
-    // Add to end for retry
-    deckCards.push(card);
+  if (correct) {
+    progress[key] = Math.min(cur + 1, 4);
+  } else {
+    progress[key] = Math.max(cur - 1, 1); // never below 1 once seen
+    // Re-add card later in this session for retry
+    if (deckIndex + 2 < deckCards.length) {
+      deckCards.splice(deckIndex + 3, 0, { ...card, stage: Math.max(cur - 1, 1) });
+    } else {
+      deckCards.push({ ...card, stage: Math.max(cur - 1, 1) });
+    }
   }
-  deckIndex++;
-  showCard();
+  card.stage = progress[key];
+  saveProgress(progress);
 }
 
 // ============================================================
@@ -1813,12 +2095,14 @@ function saveFrequency() {
 // ============================================================
 function renderSettings() {
   const progress = getProgress();
-  let total = 0, learned = 0;
+  let total = 0, mastered = 0, learning = 0;
   DECKS.forEach(d => d.cards.forEach((_, i) => {
     total++;
-    if ((progress[d.id + '_' + i] || 0) >= 1) learned++;
+    const s = progress[d.id + '_' + i] || 0;
+    if (s >= 4) mastered++;
+    else if (s >= 1) learning++;
   }));
-  document.getElementById('stats-learned').textContent = `${learned} / ${total}`;
+  document.getElementById('stats-learned').textContent = `${mastered} gemeistert · ${learning} am Lernen · ${total} gesamt`;
 
   const notifOn = localStorage.getItem('esp-notif') === 'on';
   document.getElementById('toggle-notif').classList.toggle('on', notifOn);
