@@ -1414,10 +1414,17 @@ function startDeck(id) {
     stage: progress[currentDeck.id + '_' + i] || 0
   }))
   .filter(c => c.stage < 3) // exclude mastered
-  .sort((a, b) => a.stage - b.stage); // lowest stage first
+  .sort((a, b) => {
+    // Group by stage, but shuffle within each stage
+    if (a.stage !== b.stage) return a.stage - b.stage;
+    return Math.random() - 0.5;
+  });
 
-  // Limit session to 10 cards
+  // Limit session to 10 cards (lowest stages first, shuffled within)
   deckCards = deckCards.slice(0, 10);
+
+  // Shuffle the final selection so it's not predictable
+  deckCards.sort(() => Math.random() - 0.5);
 
   if (deckCards.length === 0) {
     // All mastered — offer review
