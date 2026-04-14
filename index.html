@@ -415,8 +415,9 @@ nav button .icon { font-size: 22px; }
       </div>
     </div>
 
-    <!-- Später-Button (auf allen Stages sichtbar) -->
-    <div id="skip-row" style="text-align:center;margin-top:12px;">
+    <!-- Navigation: Zurück + Später -->
+    <div id="skip-row" style="display:flex;justify-content:center;gap:12px;margin-top:12px;">
+      <button id="prev-card-btn" onclick="prevCard()" style="background:none;border:1px solid #ffffff20;color:var(--text2);padding:8px 20px;border-radius:10px;font-size:13px;cursor:pointer;display:none;">← Zurück</button>
       <button onclick="skipCard()" style="background:none;border:1px solid #ffffff20;color:var(--text2);padding:8px 20px;border-radius:10px;font-size:13px;cursor:pointer;">Später</button>
     </div>
 
@@ -1428,6 +1429,7 @@ function startDeck(id) {
   deckIndex = 0;
   sessionCorrect = 0;
   sessionTotal = 0;
+  cardHistory = [];
   document.getElementById('deck-overview').style.display = 'none';
   document.getElementById('deck-session').style.display = 'block';
   showNextCard();
@@ -1451,6 +1453,11 @@ function hideAllStages() {
 
 function showNextCard() {
   hideAllStages();
+
+  // Show/hide Zurück button
+  const prevBtn = document.getElementById('prev-card-btn');
+  prevBtn.style.display = cardHistory.length > 0 ? 'inline-block' : 'none';
+
   if (deckIndex >= deckCards.length) {
     // Session done
     document.getElementById('stage-done').style.display = 'block';
@@ -1506,6 +1513,9 @@ function showMC(card) {
 }
 
 function checkMC(idx, correct) {
+  const card = deckCards[deckIndex];
+  const progress = getProgress();
+  const prevStage = progress[currentDeck.id + '_' + card.idx] || 0;
   sessionTotal++;
   const btns = document.querySelectorAll('.mc-option');
   btns.forEach(b => b.disabled = true);
@@ -1523,11 +1533,14 @@ function checkMC(idx, correct) {
     advanceCard(false);
   }
 
+  cardHistory.push({ index: deckIndex, card, prevStage, wasScored: true, wasCorrect: isCorrect });
   setTimeout(() => { deckIndex++; showNextCard(); }, 1200);
 }
 
 // ---- Stage 2: Flashcard ----
 let _currentCardBack = { lang: '', word: '' };
+
+let _flashRevealed = false;
 
 function showFlash(card) {
   document.getElementById('stage-flash').style.display = 'block';
@@ -1543,19 +1556,32 @@ function showFlash(card) {
   document.getElementById('fc-hint').textContent = '';
   document.getElementById('flashcard').classList.remove('flipped');
   document.getElementById('card-actions').style.display = 'none';
+  _flashRevealed = false;
 }
 
 function flipCard() {
-  document.getElementById('fc-back-lang').textContent = _currentCardBack.lang;
-  document.getElementById('fc-back-word').textContent = _currentCardBack.word;
-  document.getElementById('flashcard').classList.add('flipped');
-  document.getElementById('card-actions').style.display = 'flex';
+  const fc = document.getElementById('flashcard');
+  if (!_flashRevealed) {
+    // First flip: reveal the answer
+    document.getElementById('fc-back-lang').textContent = _currentCardBack.lang;
+    document.getElementById('fc-back-word').textContent = _currentCardBack.word;
+    fc.classList.add('flipped');
+    document.getElementById('card-actions').style.display = 'flex';
+    _flashRevealed = true;
+  } else {
+    // Toggle: flip back and forth to review both sides
+    fc.classList.toggle('flipped');
+  }
 }
 
 function markCard(correct) {
+  const card = deckCards[deckIndex];
+  const progress = getProgress();
+  const prevStage = progress[currentDeck.id + '_' + card.idx] || 0;
   sessionTotal++;
   if (correct) sessionCorrect++;
   advanceCard(correct);
+  cardHistory.push({ index: deckIndex, card, prevStage, wasScored: true, wasCorrect: correct });
   deckIndex++;
   showNextCard();
 }
@@ -1578,6 +1604,8 @@ function showTypeEs(card) {
 
 function typeEsCheck() {
   const card = deckCards[deckIndex];
+  const progress = getProgress();
+  const prevStage = progress[currentDeck.id + '_' + card.idx] || 0;
   const input = document.getElementById('type-es-input');
   const fb = document.getElementById('type-es-feedback');
   const answer = input.value.trim();
@@ -1597,6 +1625,7 @@ function typeEsCheck() {
     fb.textContent = card.es;
   }
   advanceCard(correct);
+  cardHistory.push({ index: deckIndex, card, prevStage, wasScored: true, wasCorrect: correct });
 
   const btn = document.getElementById('type-es-next');
   btn.textContent = 'Weiter';
@@ -1627,8 +1656,32 @@ function advanceCard(correct) {
 
 // ---- Skip (Später) ----
 function skipCard() {
-  // Skip without changing level — just move to next card
+  cardHistory.push({ index: deckIndex, card: deckCards[deckIndex] });
   deckIndex++;
+  showNextCard();
+}
+
+// ---- Zurück (vorherige Karte nochmal, Bewertung rückgängig) ----
+let cardHistory = []; // stack of { index, card, prevStage }
+
+function prevCard() {
+  if (cardHistory.length === 0) return;
+  const prev = cardHistory.pop();
+  // Undo the progress change
+  const progress = getProgress();
+  const key = currentDeck.id + '_' + prev.card.idx;
+  if (prev.prevStage !== undefined) {
+    progress[key] = prev.prevStage;
+    saveProgress(progress);
+  }
+  // Undo session stats
+  if (prev.wasScored) {
+    sessionTotal = Math.max(0, sessionTotal - 1);
+    if (prev.wasCorrect) sessionCorrect = Math.max(0, sessionCorrect - 1);
+  }
+  // Go back
+  deckIndex = prev.index;
+  // Remove any duplicate retry cards that were added for this card
   showNextCard();
 }
 
