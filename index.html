@@ -1234,13 +1234,13 @@ async function saveProgressToDB(p) {
 }
 
 function getProgress() {
-  if (_progressCache) return _progressCache;
+  // Always read fresh from localStorage (no stale cache)
   const ls = JSON.parse(localStorage.getItem('esp-progress') || '{}');
   _progressCache = ls;
   // Also try to restore from IndexedDB if localStorage was cleared
   if (Object.keys(ls).length === 0) {
     loadProgressFromDB().then(db => {
-      if (Object.keys(db).length > 0 && Object.keys(_progressCache).length === 0) {
+      if (Object.keys(db).length > 0) {
         _progressCache = db;
         localStorage.setItem('esp-progress', JSON.stringify(db));
         renderDecks(); // Re-render with restored data
@@ -1312,7 +1312,7 @@ function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
   el.innerHTML = DECKS.map(d => {
-    const learned = d.cards.filter((_, i) => (progress[d.id + '_' + i] || 0) >= 3).length;
+    const learned = d.cards.filter((_, i) => (progress[d.id + '_' + i] || 0) >= 1).length;
     const pct = Math.round(learned / d.cards.length * 100);
     const color = pct === 100 ? 'var(--green)' : pct > 50 ? 'var(--orange)' : 'var(--accent)';
     return `
@@ -1346,6 +1346,8 @@ function showDeckOverview() {
   renderDecks();
 }
 
+let _currentCardBack = { lang: '', word: '' };
+
 function showCard() {
   if (deckIndex >= deckCards.length) {
     showDeckOverview();
@@ -1355,8 +1357,13 @@ function showCard() {
   const showEsFirst = Math.random() > 0.5;
   document.getElementById('fc-front-lang').textContent = showEsFirst ? 'Español' : 'Deutsch';
   document.getElementById('fc-front-word').textContent = showEsFirst ? card.es : card.de;
-  document.getElementById('fc-back-lang').textContent = showEsFirst ? 'Deutsch' : 'Español';
-  document.getElementById('fc-back-word').textContent = showEsFirst ? card.de : card.es;
+  // Don't put the answer in the DOM yet — prevents any CSS leak
+  _currentCardBack = {
+    lang: showEsFirst ? 'Deutsch' : 'Español',
+    word: showEsFirst ? card.de : card.es,
+  };
+  document.getElementById('fc-back-lang').textContent = '';
+  document.getElementById('fc-back-word').textContent = '';
   document.getElementById('fc-hint').textContent = '';
   document.getElementById('flashcard').classList.remove('flipped');
   document.getElementById('card-actions').style.display = 'none';
@@ -1364,6 +1371,9 @@ function showCard() {
 }
 
 function flipCard() {
+  // Only now reveal the answer
+  document.getElementById('fc-back-lang').textContent = _currentCardBack.lang;
+  document.getElementById('fc-back-word').textContent = _currentCardBack.word;
   document.getElementById('flashcard').classList.add('flipped');
   document.getElementById('card-actions').style.display = 'flex';
 }
@@ -1806,7 +1816,7 @@ function renderSettings() {
   let total = 0, learned = 0;
   DECKS.forEach(d => d.cards.forEach((_, i) => {
     total++;
-    if ((progress[d.id + '_' + i] || 0) >= 3) learned++;
+    if ((progress[d.id + '_' + i] || 0) >= 1) learned++;
   }));
   document.getElementById('stats-learned').textContent = `${learned} / ${total}`;
 
