@@ -113,10 +113,26 @@ nav button .icon { font-size: 22px; }
   position: absolute; inset: 0;
   background: var(--card); border-radius: var(--radius);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  backface-visibility: hidden; padding: 24px;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  padding: 24px;
   border: 1px solid #ffffff10;
 }
-.flashcard .back { transform: rotateY(180deg); }
+.flashcard .back {
+  transform: rotateY(180deg);
+}
+/* Hide back content until flipped to prevent flash */
+.flashcard:not(.flipped) .back .word,
+.flashcard:not(.flipped) .back .lang-label,
+.flashcard:not(.flipped) .back .hint {
+  visibility: hidden;
+}
+.flashcard.flipped .back .word,
+.flashcard.flipped .back .lang-label,
+.flashcard.flipped .back .hint {
+  visibility: visible;
+  transition: visibility 0s 0.25s;
+}
 .flashcard .word { font-size: 24px; font-weight: 700; text-align: center; }
 .flashcard .hint { font-size: 13px; color: var(--text2); margin-top: 8px; }
 .flashcard .lang-label {
@@ -1183,11 +1199,61 @@ let quizStreak = 0;
 let currentQuizItem = null;
 let notifTimer = null;
 
-function getProgress() {
-  return JSON.parse(localStorage.getItem('esp-progress') || '{}');
+// Persistent storage: localStorage + IndexedDB backup (Safari deletes localStorage after 7d inactivity)
+const DB_NAME = 'espanol-app';
+const DB_STORE = 'progress';
+let _progressCache = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
+
+async function loadProgressFromDB() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get('data');
+      req.onsuccess = () => resolve(req.result || {});
+      req.onerror = () => resolve({});
+    });
+  } catch { return {}; }
+}
+
+async function saveProgressToDB(p) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(p, 'data');
+  } catch {}
+}
+
+function getProgress() {
+  if (_progressCache) return _progressCache;
+  const ls = JSON.parse(localStorage.getItem('esp-progress') || '{}');
+  _progressCache = ls;
+  // Also try to restore from IndexedDB if localStorage was cleared
+  if (Object.keys(ls).length === 0) {
+    loadProgressFromDB().then(db => {
+      if (Object.keys(db).length > 0 && Object.keys(_progressCache).length === 0) {
+        _progressCache = db;
+        localStorage.setItem('esp-progress', JSON.stringify(db));
+        renderDecks(); // Re-render with restored data
+      }
+    });
+  }
+  return _progressCache;
+}
+
 function saveProgress(p) {
+  _progressCache = p;
   localStorage.setItem('esp-progress', JSON.stringify(p));
+  saveProgressToDB(p); // Backup to IndexedDB
 }
 
 // ============================================================
