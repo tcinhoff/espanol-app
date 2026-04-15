@@ -1357,26 +1357,39 @@ async function saveProgressToDB(p) {
 }
 
 function getProgress() {
-  // Always read fresh from localStorage (no stale cache)
-  const ls = JSON.parse(localStorage.getItem('esp-progress') || '{}');
-  _progressCache = ls;
-  // Also try to restore from IndexedDB if localStorage was cleared
-  if (Object.keys(ls).length === 0) {
-    loadProgressFromDB().then(db => {
-      if (Object.keys(db).length > 0) {
-        _progressCache = db;
-        localStorage.setItem('esp-progress', JSON.stringify(db));
-        renderDecks(); // Re-render with restored data
-      }
-    });
-  }
+  if (_progressCache) return _progressCache;
+  _progressCache = JSON.parse(localStorage.getItem('esp-progress') || '{}');
   return _progressCache;
 }
 
 function saveProgress(p) {
   _progressCache = p;
-  localStorage.setItem('esp-progress', JSON.stringify(p));
-  saveProgressToDB(p); // Backup to IndexedDB
+  try { localStorage.setItem('esp-progress', JSON.stringify(p)); } catch {}
+  saveProgressToDB(p);
+}
+
+// Restore from IndexedDB on startup (before anything renders)
+async function initProgress() {
+  const ls = JSON.parse(localStorage.getItem('esp-progress') || '{}');
+  let db = {};
+  try { db = await loadProgressFromDB(); } catch {}
+
+  // Merge: take the one with more data (in case one was wiped)
+  const lsCount = Object.keys(ls).length;
+  const dbCount = Object.keys(db).length;
+
+  if (dbCount > lsCount) {
+    // IndexedDB has more — localStorage was probably cleared
+    _progressCache = db;
+    try { localStorage.setItem('esp-progress', JSON.stringify(db)); } catch {}
+    console.log('Progress restored from IndexedDB:', dbCount, 'entries');
+  } else if (lsCount > dbCount) {
+    // localStorage has more — sync to IndexedDB
+    _progressCache = ls;
+    saveProgressToDB(ls);
+  } else {
+    _progressCache = ls;
+  }
 }
 
 // ============================================================
@@ -2214,23 +2227,29 @@ function resetProgress() {
 // ============================================================
 //  INIT
 // ============================================================
-renderSpickOverview();
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-    // Check for updates every time the app opens
-    reg.update();
-    // Auto-reload when new version is available
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
+// First: restore progress from IndexedDB if localStorage was cleared
+initProgress().then(() => {
+  renderSpickOverview();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update();
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        // Save progress before reload to ensure nothing is lost
+        const p = getProgress();
+        try { localStorage.setItem('esp-progress', JSON.stringify(p)); } catch {}
+        saveProgressToDB(p).then(() => {
+          window.location.reload();
+        });
+      });
     });
-  });
-}
+  }
 
-// Restore notifications if enabled
-if (localStorage.getItem('esp-notif') === 'on') {
-  scheduleNotifications();
-}
+  if (localStorage.getItem('esp-notif') === 'on') {
+    scheduleNotifications();
+  }
+});
 </script>
 </body>
 </html>
