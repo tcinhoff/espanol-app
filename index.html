@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-title" content="Español">
 <meta name="theme-color" content="#e94560">
 <link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 <title>Español para Tim</title>
 <style>
 :root {
@@ -31,14 +33,16 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ---- NAV ---- */
 nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex;
-  background: var(--card);
-  border-top: 1px solid #ffffff15;
+  background: rgba(22, 33, 62, 0.95);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid #ffffff10;
   padding-bottom: var(--safe-bottom);
   z-index: 100;
 }
@@ -46,16 +50,18 @@ nav button {
   flex: 1; border: none; background: none; color: var(--text2);
   padding: 10px 0 8px; font-size: 11px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  transition: color .2s;
+  transition: color .2s, transform .1s;
 }
+nav button:active { transform: scale(.9); }
 nav button.active { color: var(--accent); }
 nav button .icon { font-size: 22px; }
 
 /* ---- PAGES ---- */
 .page { display: none; padding: 20px 16px 90px; min-height: 100dvh; }
-.page.active { display: block; }
-.page h1 { font-size: 24px; margin-bottom: 16px; }
-.page h2 { font-size: 18px; margin: 20px 0 10px; color: var(--accent); }
+.page.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; letter-spacing: -0.5px; }
+.page h2 { font-size: 16px; font-weight: 700; margin: 24px 0 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* ---- SPICKZETTEL ---- */
 .situation-grid {
@@ -63,40 +69,49 @@ nav button .icon { font-size: 22px; }
 }
 .situation-card {
   background: var(--card); border-radius: var(--radius); padding: 20px 16px;
-  cursor: pointer; text-align: center; transition: transform .15s;
-  border: 1px solid #ffffff10;
+  cursor: pointer; text-align: center; transition: transform .15s, box-shadow .15s;
+  border: 1px solid #ffffff08;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-.situation-card:active { transform: scale(.96); }
-.situation-card .emoji { font-size: 36px; display: block; margin-bottom: 8px; }
+.situation-card:active { transform: scale(.95); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.situation-card .emoji { font-size: 40px; display: block; margin-bottom: 10px; }
 .situation-card .label { font-size: 14px; font-weight: 600; }
 
-.phrase-list { display: flex; flex-direction: column; gap: 10px; }
+.phrase-list { display: flex; flex-direction: column; gap: 8px; }
 .phrase-item {
-  background: var(--card); border-radius: 12px; padding: 14px 16px;
+  background: var(--card); border-radius: 14px; padding: 14px 16px;
   border-left: 3px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  transition: transform .1s;
 }
+.phrase-item:active { transform: scale(.98); }
 .phrase-item .es { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
 .phrase-item .de { font-size: 14px; color: var(--text2); }
 
 .back-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: none; border: none; color: var(--accent); font-size: 16px;
-  cursor: pointer; margin-bottom: 16px; padding: 4px 0;
+  font-weight: 600; cursor: pointer; margin-bottom: 16px; padding: 4px 0;
+  transition: opacity .2s;
 }
+.back-btn:active { opacity: .6; }
 
 /* ---- VOKABELTRAINER ---- */
 .deck-grid { display: flex; flex-direction: column; gap: 10px; }
 .deck-item {
-  background: var(--card); border-radius: var(--radius); padding: 16px;
+  background: var(--card); border-radius: var(--radius); padding: 16px 18px;
   display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer; border: 1px solid #ffffff10;
+  cursor: pointer; border: 1px solid #ffffff08;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform .12s, box-shadow .12s;
 }
-.deck-item .info .name { font-weight: 600; font-size: 16px; }
-.deck-item .info .count { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.deck-item:active { transform: scale(.98); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.deck-item .info .name { font-weight: 700; font-size: 16px; }
+.deck-item .info .count { font-size: 12px; color: var(--text2); margin-top: 4px; }
 .deck-item .progress-ring {
-  width: 44px; height: 44px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
 }
 
 .flashcard-container {
@@ -111,12 +126,14 @@ nav button .icon { font-size: 22px; }
 .flashcard.flipped { transform: rotateY(180deg); }
 .flashcard .front, .flashcard .back {
   position: absolute; inset: 0;
-  background: var(--card); border-radius: var(--radius);
+  background: linear-gradient(145deg, var(--card), #1a2744);
+  border-radius: var(--radius);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   padding: 24px;
-  border: 1px solid #ffffff10;
+  border: 1px solid #ffffff08;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .flashcard .back {
   transform: rotateY(180deg);
@@ -133,7 +150,7 @@ nav button .icon { font-size: 22px; }
   visibility: visible;
   transition: visibility 0s 0.25s;
 }
-.flashcard .word { font-size: 24px; font-weight: 700; text-align: center; }
+.flashcard .word { font-size: 26px; font-weight: 800; text-align: center; letter-spacing: -0.3px; }
 .flashcard .hint { font-size: 13px; color: var(--text2); margin-top: 8px; }
 .flashcard .lang-label {
   position: absolute; top: 12px; left: 16px;
@@ -178,9 +195,10 @@ nav button .icon { font-size: 22px; }
 /* ---- QUIZ ---- */
 .quiz-box {
   background: var(--card); border-radius: var(--radius); padding: 24px;
-  text-align: center; border: 1px solid #ffffff10;
+  text-align: center; border: 1px solid #ffffff08;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
-.quiz-box .question { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.quiz-box .question { font-size: 22px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px; }
 .quiz-box .direction { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
 .quiz-input {
   width: 100%; padding: 14px; border-radius: 12px; border: 2px solid #ffffff20;
@@ -237,20 +255,28 @@ nav button .icon { font-size: 22px; }
 .toggle.on::after { left: 25px; }
 
 .streak-banner {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--accent), #c62a4f, var(--accent2));
+  border-radius: var(--radius); padding: 24px; text-align: center; margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
 }
-.streak-banner .num { font-size: 48px; font-weight: 800; }
+.streak-banner .num { font-size: 52px; font-weight: 900; }
 .streak-banner .lbl { font-size: 14px; opacity: .8; }
+
+.setting-row {
+  transition: transform .1s;
+}
+.setting-row:active { transform: scale(.98); }
 
 /* ---- QUESTS ---- */
 .quest-card {
-  background: var(--card); border-radius: var(--radius); padding: 16px;
+  background: var(--card); border-radius: var(--radius); padding: 16px 18px;
   display: flex; align-items: flex-start; gap: 14px;
-  cursor: pointer; border: 1px solid #ffffff10; transition: transform .15s;
+  cursor: pointer; border: 1px solid #ffffff08;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform .12s, box-shadow .12s;
 }
-.quest-card:active { transform: scale(.98); }
-.quest-card .quest-emoji { font-size: 32px; flex-shrink: 0; }
+.quest-card:active { transform: scale(.97); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.quest-card .quest-emoji { font-size: 36px; flex-shrink: 0; padding-top: 2px; }
 .quest-card .quest-info .quest-title { font-weight: 600; font-size: 15px; }
 .quest-card .quest-info .quest-subtitle { font-size: 13px; color: var(--text2); margin-top: 3px; }
 .quest-card .quest-info .quest-tags { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
