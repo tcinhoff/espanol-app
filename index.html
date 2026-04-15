@@ -432,23 +432,6 @@ nav button .icon { font-size: 22px; }
   </div>
 </div>
 
-<!-- ===== QUIZ ===== -->
-<div class="page" id="page-quiz">
-  <h1>Quiz</h1>
-  <div class="quiz-score">
-    <div class="stat"><span class="num" id="q-correct" style="color:var(--green)">0</span><span class="lbl">Richtig</span></div>
-    <div class="stat"><span class="num" id="q-streak" style="color:var(--orange)">0</span><span class="lbl">Serie</span></div>
-    <div class="stat"><span class="num" id="q-total">0</span><span class="lbl">Gesamt</span></div>
-  </div>
-  <div class="quiz-box">
-    <div class="direction" id="quiz-dir"></div>
-    <div class="question" id="quiz-question">Lade...</div>
-    <input class="quiz-input" id="quiz-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Deine Antwort...">
-    <div class="quiz-feedback" id="quiz-feedback"></div>
-    <button class="quiz-next" id="quiz-next" onclick="nextQuiz()">Weiter</button>
-  </div>
-</div>
-
 <!-- ===== SIDEQUESTS ===== -->
 <div class="page" id="page-quests">
   <h1>Sidequests</h1>
@@ -532,7 +515,6 @@ nav button .icon { font-size: 22px; }
 <nav>
   <button class="active" onclick="showPage('spick')"><span class="icon">📋</span>Spick</button>
   <button onclick="showPage('vokabeln')"><span class="icon">🗂</span>Vokabeln</button>
-  <button onclick="showPage('quiz')"><span class="icon">⚡</span>Quiz</button>
   <button onclick="showPage('quests')"><span class="icon">🗺</span>Quests</button>
   <button onclick="showPage('settings')"><span class="icon">⚙</span>Mehr</button>
 </nav>
@@ -1316,10 +1298,6 @@ const QUESTS = [
 let currentDeck = null;
 let deckCards = [];
 let deckIndex = 0;
-let quizCorrect = 0;
-let quizTotal = 0;
-let quizStreak = 0;
-let currentQuizItem = null;
 let notifTimer = null;
 
 // Persistent storage: localStorage + IndexedDB backup (Safari deletes localStorage after 7d inactivity)
@@ -1399,9 +1377,8 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('nav button').forEach((b, i) => {
-    b.classList.toggle('active', ['spick','vokabeln','quiz','quests','settings'][i] === id);
+    b.classList.toggle('active', ['spick','vokabeln','quests','settings'][i] === id);
   });
-  if (id === 'quiz') nextQuiz();
   if (id === 'vokabeln') renderDecks();
   if (id === 'quests') renderQuests();
   if (id === 'settings') renderSettings();
@@ -1770,7 +1747,7 @@ function prevCard() {
 }
 
 // ============================================================
-//  QUIZ
+//  HELPERS
 // ============================================================
 function getAllVocab() {
   const all = [];
@@ -1778,67 +1755,11 @@ function getAllVocab() {
   return all;
 }
 
-function nextQuiz() {
-  const vocab = getAllVocab();
-  const item = vocab[Math.floor(Math.random() * vocab.length)];
-  const esFirst = Math.random() > 0.5;
-  currentQuizItem = {
-    question: esFirst ? item.es : item.de,
-    answer: esFirst ? item.de : item.es,
-    direction: esFirst ? 'ES → DE' : 'DE → ES',
-  };
-  document.getElementById('quiz-dir').textContent = currentQuizItem.direction;
-  document.getElementById('quiz-question').textContent = currentQuizItem.question;
-  const input = document.getElementById('quiz-input');
-  input.value = '';
-  input.className = 'quiz-input';
-  input.focus();
-  document.getElementById('quiz-feedback').className = 'quiz-feedback';
-  document.getElementById('quiz-next').className = 'quiz-next';
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const input = document.getElementById('quiz-input');
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') checkQuiz();
-  });
-});
-
 function normalize(s) {
   return s.toLowerCase().trim()
     .replace(/[áà]/g,'a').replace(/[éè]/g,'e').replace(/[íì]/g,'i')
     .replace(/[óò]/g,'o').replace(/[úù]/g,'u').replace(/ñ/g,'n')
     .replace(/[¿?¡!.,]/g,'');
-}
-
-function checkQuiz() {
-  const input = document.getElementById('quiz-input');
-  const fb = document.getElementById('quiz-feedback');
-  const answer = input.value.trim();
-  if (!answer) return;
-
-  const correct = normalize(answer) === normalize(currentQuizItem.answer);
-  quizTotal++;
-  if (correct) {
-    quizCorrect++;
-    quizStreak++;
-    input.className = 'quiz-input correct';
-    fb.className = 'quiz-feedback correct show';
-    fb.textContent = 'Richtig!';
-  } else {
-    quizStreak = 0;
-    input.className = 'quiz-input wrong';
-    fb.className = 'quiz-feedback wrong show';
-    fb.textContent = `${currentQuizItem.answer}`;
-  }
-  document.getElementById('q-correct').textContent = quizCorrect;
-  document.getElementById('q-streak').textContent = quizStreak;
-  document.getElementById('q-total').textContent = quizTotal;
-  document.getElementById('quiz-next').className = 'quiz-next show';
-
-  // Track streak
-  const today = new Date().toDateString();
-  localStorage.setItem('esp-last-quiz', today);
 }
 
 // ============================================================
