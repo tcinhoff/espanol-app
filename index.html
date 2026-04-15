@@ -1437,13 +1437,16 @@ function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
   el.innerHTML = DECKS.map(d => {
-    let mastered = 0, inProgress = 0;
+    let mastered = 0, inProgress = 0, totalPoints = 0;
+    const maxPoints = d.cards.length * 4; // 4 stages to mastery
     d.cards.forEach((_, i) => {
       const s = progress[d.id + '_' + i] || 0;
+      totalPoints += Math.min(s, 4);
       if (s >= 4) mastered++;
       else if (s >= 1) inProgress++;
     });
-    const pct = Math.round(mastered / d.cards.length * 100);
+    // Progress reflects every stage, not just mastery
+    const pct = Math.round(totalPoints / maxPoints * 100);
     const color = pct === 100 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--accent)';
     const sub = mastered > 0 || inProgress > 0
       ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
