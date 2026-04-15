@@ -528,6 +528,26 @@ nav button .icon { font-size: 22px; }
       <div class="sublabel" id="stats-learned">0 / 0</div>
     </div>
   </div>
+  <h2>Backup</h2>
+  <div class="setting-row">
+    <div>
+      <div class="label">Fortschritt exportieren</div>
+      <div class="sublabel">Als Datei sichern (überlebt Neuinstallation)</div>
+    </div>
+    <button onclick="exportProgress()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Export</button>
+  </div>
+  <div class="setting-row">
+    <div>
+      <div class="label">Fortschritt importieren</div>
+      <div class="sublabel">Aus gesicherter Datei wiederherstellen</div>
+    </div>
+    <label style="background:var(--green);color:#1a1a2e;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600;">
+      Import
+      <input type="file" accept=".json" onchange="importProgress(event)" style="display:none;">
+    </label>
+  </div>
+
+  <h2>Gefahrenzone</h2>
   <div class="setting-row">
     <div>
       <div class="label">Fortschritt zurücksetzen</div>
@@ -2169,9 +2189,51 @@ function renderSettings() {
 function resetProgress() {
   if (confirm('Wirklich allen Fortschritt zurücksetzen?')) {
     localStorage.removeItem('esp-progress');
+    _progressCache = null;
+    saveProgressToDB({});
     renderDecks();
     renderSettings();
   }
+}
+
+function exportProgress() {
+  const p = getProgress();
+  const data = JSON.stringify({ progress: p, exportedAt: new Date().toISOString() }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `espanol-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProgress(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const p = data.progress || data;
+      if (typeof p !== 'object') throw new Error('invalid');
+      // Merge: keep higher stage for each card
+      const current = getProgress();
+      Object.keys(p).forEach(key => {
+        if (!current[key] || p[key] > current[key]) {
+          current[key] = p[key];
+        }
+      });
+      saveProgress(current);
+      _progressCache = null; // force re-read
+      renderDecks();
+      renderSettings();
+      alert('Fortschritt wiederhergestellt! ' + Object.keys(p).length + ' Einträge.');
+    } catch (err) {
+      alert('Fehler: Datei konnte nicht gelesen werden.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ============================================================
