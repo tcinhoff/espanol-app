@@ -1482,18 +1482,47 @@ const STAGE_CLASSES = ['', 's1', 's2', 's3', 's4'];
 function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
-  el.innerHTML = DECKS.map(d => {
+
+  // Calculate stats for each deck
+  const deckStats = DECKS.map(d => {
     let mastered = 0, inProgress = 0, totalPoints = 0;
-    const maxPoints = d.cards.length * 4; // 4 stages to mastery
+    const maxPoints = d.cards.length * 4;
     d.cards.forEach((_, i) => {
       const s = progress[d.id + '_' + i] || 0;
       totalPoints += Math.min(s, 4);
       if (s >= 4) mastered++;
       else if (s >= 1) inProgress++;
     });
-    // Progress reflects every stage, not just mastery
     const pct = Math.round(totalPoints / maxPoints * 100);
-    const color = pct === 100 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--accent)';
+    return { deck: d, mastered, inProgress, totalPoints, maxPoints, pct };
+  });
+
+  // Sort: in-progress first (highest progress but not 100%), then new (0%), then completed (100%)
+  deckStats.sort((a, b) => {
+    const aComplete = a.pct === 100;
+    const bComplete = b.pct === 100;
+    const aStarted = a.pct > 0;
+    const bStarted = b.pct > 0;
+    // Completed goes to bottom
+    if (aComplete && !bComplete) return 1;
+    if (!aComplete && bComplete) return -1;
+    // Started goes above not-started
+    if (aStarted && !bStarted) return -1;
+    if (!aStarted && bStarted) return 1;
+    // Within started: higher progress first (closest to finishing)
+    if (aStarted && bStarted) return b.pct - a.pct;
+    return 0;
+  });
+
+  // Split into active and completed
+  const active = deckStats.filter(s => s.pct < 100);
+  const completed = deckStats.filter(s => s.pct === 100);
+
+  let html = '';
+
+  // Active decks
+  html += active.map(({ deck: d, mastered, inProgress, pct }) => {
+    const color = pct > 30 ? 'var(--orange)' : 'var(--accent)';
     const sub = mastered > 0 || inProgress > 0
       ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
       : `${d.cards.length} Karten — starte jetzt!`;
@@ -1506,6 +1535,29 @@ function renderDecks() {
         <div class="progress-ring" style="border:3px solid ${color};color:${color}">${pct}%</div>
       </div>`;
   }).join('');
+
+  // Completed decks (collapsible)
+  if (completed.length > 0) {
+    html += `
+      <div style="margin-top:16px;">
+        <button onclick="document.getElementById('completed-decks').style.display = document.getElementById('completed-decks').style.display === 'none' ? 'flex' : 'none'; this.textContent = this.textContent.includes('▸') ? '▾ Gemeistert (${completed.length})' : '▸ Gemeistert (${completed.length})';"
+          style="background:none;border:none;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+          ▸ Gemeistert (${completed.length})
+        </button>
+        <div id="completed-decks" class="deck-grid" style="display:none;margin-top:8px;">
+          ${completed.map(({ deck: d }) => `
+            <div class="deck-item" onclick="startDeck('${d.id}')" style="opacity:.6;">
+              <div class="info">
+                <div class="name">${d.icon} ${d.name}</div>
+                <div class="count">${d.cards.length} Karten — zur Wiederholung</div>
+              </div>
+              <div class="progress-ring" style="border:3px solid var(--green);color:var(--green)">100%</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 function startDeck(id) {
