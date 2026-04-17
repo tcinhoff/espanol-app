@@ -726,7 +726,7 @@ const SPICKZETTEL = [
 
 const DECKS = [
   {
-    id: 'pronombres', name: 'Pronomen: Zuordnung', icon: '👥',
+    id: 'pronombres', name: 'Personalpronomen', icon: '👥',
     cards: [
       ['yo', 'ich'],
       ['tú', 'du (informell)'],
@@ -737,13 +737,26 @@ const DECKS = [
       ['ustedes', 'ihr / Sie (Plural)'],
       ['ellos', 'sie (Männer oder gemischt)'],
       ['ellas', 'sie (nur Frauen)'],
-      ['Pedro y Juan', 'sie (zwei Männer)'],
-      ['María y Ana', 'sie (zwei Frauen)'],
-      ['Pedro y María', 'sie (gemischt = männliche Form)'],
-      ['María y yo', 'wir (jemand + ich)'],
-      ['Pedro y tú', 'ihr (jemand + du)'],
-      ['la profesora', 'sie (eine Frau)'],
-      ['el doctor García', 'er (ein Mann)'],
+    ]
+  },
+  {
+    id: 'pronzuord', name: 'Pronomen: Zuordnung', icon: '🎯',
+    fixedDirection: true, // Always show ES side as question, DE side as answer
+    cards: [
+      ['Pedro y Juan', 'ellos'],
+      ['María y Ana', 'ellas'],
+      ['Pedro y María', 'ellos'],
+      ['María y yo', 'nosotros'],
+      ['Pedro y tú', 'ustedes'],
+      ['la profesora', 'ella'],
+      ['el doctor García', 'él'],
+      ['los estudiantes', 'ellos'],
+      ['las niñas', 'ellas'],
+      ['Juan y yo', 'nosotros'],
+      ['usted y María', 'ustedes'],
+      ['Pedro, María y yo', 'nosotros'],
+      ['la familia Ruíz', 'ellos'],
+      ['Helena e Isabel', 'ellas'],
     ]
   },
   {
@@ -1827,8 +1840,10 @@ function showNextCard() {
 // ---- Stage 1: Multiple Choice ----
 function showMC(card) {
   document.getElementById('stage-mc').style.display = 'block';
-  const esFirst = Math.random() > 0.5;
-  document.getElementById('mc-direction').textContent = esFirst ? 'Español → Deutsch' : 'Deutsch → Español';
+  // fixedDirection: always show ES (names) as question, DE (pronoun) as answer
+  const esFirst = currentDeck.fixedDirection ? true : Math.random() > 0.5;
+  document.getElementById('mc-direction').textContent = currentDeck.fixedDirection
+    ? 'Welches Pronomen?' : (esFirst ? 'Español → Deutsch' : 'Deutsch → Español');
   document.getElementById('mc-question').textContent = esFirst ? card.es : card.de;
   document.getElementById('mc-feedback').className = 'quiz-feedback';
   document.getElementById('mc-feedback').textContent = '';
@@ -1838,9 +1853,9 @@ function showMC(card) {
   const allAnswers = [];
   currentDeck.cards.forEach(c => {
     const a = esFirst ? c[1] : c[0];
-    if (a !== correctAnswer) allAnswers.push(a);
+    if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
   });
-  // If not enough cards in deck, pull from other decks
+  // If not enough unique answers in deck, pull from other decks
   if (allAnswers.length < 3) {
     DECKS.forEach(d => d.cards.forEach(c => {
       const a = esFirst ? c[1] : c[0];
@@ -1888,11 +1903,13 @@ let _flashRevealed = false;
 
 function showFlash(card) {
   document.getElementById('stage-flash').style.display = 'block';
-  const showEsFirst = Math.random() > 0.5;
-  document.getElementById('fc-front-lang').textContent = showEsFirst ? 'Español' : 'Deutsch';
+  const showEsFirst = currentDeck.fixedDirection ? true : Math.random() > 0.5;
+  const frontLabel = currentDeck.fixedDirection ? 'Wer?' : (showEsFirst ? 'Español' : 'Deutsch');
+  const backLabel = currentDeck.fixedDirection ? 'Pronomen' : (showEsFirst ? 'Deutsch' : 'Español');
+  document.getElementById('fc-front-lang').textContent = frontLabel;
   document.getElementById('fc-front-word').textContent = showEsFirst ? card.es : card.de;
   _currentCardBack = {
-    lang: showEsFirst ? 'Deutsch' : 'Español',
+    lang: backLabel,
     word: showEsFirst ? card.de : card.es,
   };
   document.getElementById('fc-back-lang').textContent = '';
@@ -1933,10 +1950,16 @@ function markCard(correct) {
 // ---- Stage 3: Type ES (see DE, type ES — Produce!) ----
 function showTypeEs(card) {
   document.getElementById('stage-type-es').style.display = 'block';
-  document.getElementById('type-es-question').textContent = card.de;
+  // fixedDirection: show ES (name) as question, type DE (pronoun) as answer
+  const question = currentDeck.fixedDirection ? card.es : card.de;
+  const placeholder = currentDeck.fixedDirection ? 'Pronomen tippen...' : 'Español tippen...';
+  const direction = currentDeck.fixedDirection ? 'Welches Pronomen?' : 'Deutsch → Español';
+  document.getElementById('type-es-question').textContent = question;
+  document.querySelector('#stage-type-es .direction').textContent = direction;
   const input = document.getElementById('type-es-input');
   input.value = '';
   input.className = 'quiz-input';
+  input.placeholder = placeholder;
   input.focus();
   document.getElementById('type-es-feedback').className = 'quiz-feedback';
   document.getElementById('type-es-feedback').textContent = '';
@@ -1956,7 +1979,9 @@ function typeEsCheck() {
   if (!answer) return;
 
   sessionTotal++;
-  const correct = normalize(answer) === normalize(card.es);
+  // fixedDirection: answer is DE side (pronoun), otherwise ES side
+  const expectedAnswer = currentDeck.fixedDirection ? card.de : card.es;
+  const correct = normalize(answer) === normalize(expectedAnswer);
 
   if (correct) {
     sessionCorrect++;
@@ -1966,7 +1991,7 @@ function typeEsCheck() {
   } else {
     input.className = 'quiz-input wrong';
     fb.className = 'quiz-feedback wrong show';
-    fb.textContent = card.es;
+    fb.textContent = expectedAnswer;
   }
   advanceCard(correct);
   cardHistory.push({ index: deckIndex, card, prevStage, wasScored: true, wasCorrect: correct });
