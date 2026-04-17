@@ -267,6 +267,14 @@ nav button .icon { font-size: 22px; }
 }
 .setting-row:active { transform: scale(.98); }
 
+/* ---- GRAMMATIK ---- */
+#gram-content { line-height: 1.6; }
+#gram-content h2 { font-size: 16px; font-weight: 700; margin: 20px 0 8px; color: var(--accent); }
+#gram-content h2:first-child { margin-top: 0; }
+#gram-content p { margin-bottom: 10px; }
+#gram-content table { font-size: 15px; }
+#gram-content strong { color: var(--text); }
+
 /* ---- QUESTS ---- */
 .quest-card {
   background: var(--card); border-radius: var(--radius); padding: 16px 18px;
@@ -492,6 +500,16 @@ nav button .icon { font-size: 22px; }
   </div>
 </div>
 
+<!-- ===== GRAMMATIK ===== -->
+<div class="page" id="page-grammatik">
+  <h1>Grammatik</h1>
+  <div id="gram-overview" class="deck-grid"></div>
+  <div id="gram-detail" style="display:none">
+    <button class="back-btn" onclick="showGramOverview()">&#8592; Zurück</button>
+    <div id="gram-content"></div>
+  </div>
+</div>
+
 <!-- ===== EINSTELLUNGEN ===== -->
 <div class="page" id="page-settings">
   <h1>Einstellungen</h1>
@@ -561,6 +579,7 @@ nav button .icon { font-size: 22px; }
 <nav>
   <button class="active" onclick="showPage('spick')"><span class="icon">📋</span>Spick</button>
   <button onclick="showPage('vokabeln')"><span class="icon">🗂</span>Vokabeln</button>
+  <button onclick="showPage('grammatik')"><span class="icon">📖</span>Grammatik</button>
   <button onclick="showPage('quests')"><span class="icon">🗺</span>Quests</button>
   <button onclick="showPage('settings')"><span class="icon">⚙</span>Mehr</button>
 </nav>
@@ -709,21 +728,22 @@ const DECKS = [
   {
     id: 'pronombres', name: 'Pronomen: Zuordnung', icon: '👥',
     cards: [
-      ['Pedro y Juan', 'ellos'],
-      ['María y Ana', 'ellas'],
-      ['Pedro y María', 'ellos'],
-      ['María y yo', 'nosotros'],
-      ['Pedro y tú', 'ustedes'],
-      ['la profesora', 'ella'],
-      ['los estudiantes', 'ellos'],
-      ['las niñas', 'ellas'],
-      ['el doctor García', 'él'],
-      ['la familia Ruíz', 'ellos'],
-      ['Juan y yo', 'nosotros'],
-      ['usted y María', 'ustedes'],
-      ['Helena e Isabel', 'ellas'],
-      ['Pedro, María y yo', 'nosotros'],
-      ['los meseros', 'ellos'],
+      ['yo', 'ich'],
+      ['tú', 'du (informell)'],
+      ['usted', 'Sie (formell)'],
+      ['él', 'er'],
+      ['ella', 'sie (eine Frau)'],
+      ['nosotros', 'wir'],
+      ['ustedes', 'ihr / Sie (Plural)'],
+      ['ellos', 'sie (Männer/gemischt)'],
+      ['ellas', 'sie (nur Frauen)'],
+      ['Pedro y Juan = ?', 'ellos (zwei Männer)'],
+      ['María y Ana = ?', 'ellas (zwei Frauen)'],
+      ['Pedro y María = ?', 'ellos (gemischt = immer ellos)'],
+      ['María y yo = ?', 'nosotros (jemand + ich = wir)'],
+      ['Pedro y tú = ?', 'ustedes (jemand + du = ihr)'],
+      ['la profesora = ?', 'ella (eine Frau)'],
+      ['el doctor García = ?', 'él (ein Mann)'],
     ]
   },
   {
@@ -1584,9 +1604,10 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('nav button').forEach((b, i) => {
-    b.classList.toggle('active', ['spick','vokabeln','quests','settings'][i] === id);
+    b.classList.toggle('active', ['spick','vokabeln','grammatik','quests','settings'][i] === id);
   });
   if (id === 'vokabeln') renderDecks();
+  if (id === 'grammatik') renderGramOverview();
   if (id === 'quests') renderQuests();
   if (id === 'settings') renderSettings();
 }
@@ -2447,6 +2468,240 @@ function importProgress(event) {
     }
   };
   reader.readAsText(file);
+}
+
+// ============================================================
+//  GRAMMATIK
+// ============================================================
+const GRAMMAR = [
+  {
+    id: 'pronomen', icon: '👥', title: 'Personalpronomen',
+    subtitle: 'yo, tú, él, ella, nosotros, ustedes, ellos',
+    content: `
+<h2>Die Personalpronomen</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">yo</td><td style="padding:8px;color:var(--text2)">ich</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">tú</td><td style="padding:8px;color:var(--text2)">du (informell)</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">usted</td><td style="padding:8px;color:var(--text2)">Sie (formell) — In Kolumbien sehr häufig!</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">él / ella</td><td style="padding:8px;color:var(--text2)">er / sie</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">nosotros</td><td style="padding:8px;color:var(--text2)">wir</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">ustedes</td><td style="padding:8px;color:var(--text2)">ihr / Sie (Plural)</td></tr>
+<tr><td style="padding:8px;font-weight:700;">ellos / ellas</td><td style="padding:8px;color:var(--text2)">sie (Plural)</td></tr>
+</table>
+
+<h2>Wie ordne ich zu?</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:12px;">Stell dir immer 2 Fragen:</p>
+
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<strong>Frage 1: Bin ICH dabei?</strong><br>
+<span style="color:var(--text2);">Wenn ja → <strong>nosotros</strong> (wir)</span><br>
+<span style="color:var(--green);">María y yo → nosotros</span><br>
+<span style="color:var(--green);">Pedro, Ana y yo → nosotros</span>
+</div>
+
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<strong>Frage 2: Ist DU dabei?</strong><br>
+<span style="color:var(--text2);">Wenn ja (und ich nicht) → <strong>ustedes</strong> (ihr)</span><br>
+<span style="color:var(--green);">Pedro y tú → ustedes</span>
+</div>
+
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<strong>Sonst: Eine Person oder mehrere?</strong><br>
+<span style="color:var(--text2);">Eine Person → <strong>él</strong> (Mann) oder <strong>ella</strong> (Frau)</span><br>
+<span style="color:var(--text2);">Mehrere → <strong>ellos</strong> (Männer/gemischt) oder <strong>ellas</strong> (nur Frauen)</span><br>
+<span style="color:var(--green);">Pedro → él</span><br>
+<span style="color:var(--green);">María y Ana → ellas</span><br>
+<span style="color:var(--green);">Pedro y María → ellos (gemischt = IMMER ellos)</span>
+</div>
+
+<h2>Wichtig für Kolumbien</h2>
+<p style="color:var(--text2);line-height:1.6;"><strong>usted</strong> wird in Kolumbien viel häufiger benutzt als in Spanien. Auch unter Freunden sagen viele "usted" statt "tú". Grammatisch funktioniert usted wie él/ella (3. Person Singular).</p>
+`
+  },
+  {
+    id: 'ser', icon: '🔵', title: 'SER — Sein (permanent)',
+    subtitle: 'Wer/Was bin ich? Woher komme ich? Wie sehe ich aus?',
+    content: `
+<h2>SER = permanente Eigenschaften</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:16px;">Benutze SER für alles was <strong>dauerhaft</strong> ist oder sich nicht ändert:</p>
+
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">yo</td><td style="padding:8px;font-weight:700;color:var(--accent);">soy</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">tú</td><td style="padding:8px;font-weight:700;color:var(--accent);">eres</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">él / ella / usted</td><td style="padding:8px;font-weight:700;color:var(--accent);">es</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">nosotros</td><td style="padding:8px;font-weight:700;color:var(--accent);">somos</td></tr>
+<tr><td style="padding:8px;font-weight:700;">ellos / ustedes</td><td style="padding:8px;font-weight:700;color:var(--accent);">son</td></tr>
+</table>
+
+<h2>Wann SER?</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid #60a5fa;">
+<strong>Identität:</strong> Yo <strong>soy</strong> Tim. Ella <strong>es</strong> María.<br>
+<strong>Beruf:</strong> Yo <strong>soy</strong> ingeniero. Ella <strong>es</strong> profesora.<br>
+<strong>Herkunft:</strong> Yo <strong>soy</strong> de Alemania. Él <strong>es</strong> colombiano.<br>
+<strong>Aussehen:</strong> Ella <strong>es</strong> alta. Él <strong>es</strong> moreno.<br>
+<strong>Eigenschaft:</strong> La casa <strong>es</strong> bonita. El carro <strong>es</strong> caro.
+</div>
+
+<h2>Merkhilfe</h2>
+<p style="color:var(--text2);line-height:1.6;">SER = <strong>D.O.C.T.O.R.</strong><br>
+<strong>D</strong>escription (Aussehen) — Él es alto.<br>
+<strong>O</strong>ccupation (Beruf) — Soy ingeniero.<br>
+<strong>C</strong>haracteristic (Eigenschaft) — La casa es bonita.<br>
+<strong>T</strong>ime (Uhrzeit) — Son las tres.<br>
+<strong>O</strong>rigin (Herkunft) — Soy de Alemania.<br>
+<strong>R</strong>elation (Beziehung) — Ella es mi profesora.</p>
+`
+  },
+  {
+    id: 'estar', icon: '🔴', title: 'ESTAR — Sein (temporär)',
+    subtitle: 'Wo bin ich? Wie fühle ich mich? Was mache ich gerade?',
+    content: `
+<h2>ESTAR = temporäre Zustände & Orte</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:16px;">Benutze ESTAR für alles was sich <strong>ändern kann</strong> oder einen <strong>Ort</strong> beschreibt:</p>
+
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">yo</td><td style="padding:8px;font-weight:700;color:var(--accent);">estoy</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">tú</td><td style="padding:8px;font-weight:700;color:var(--accent);">estás</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">él / ella / usted</td><td style="padding:8px;font-weight:700;color:var(--accent);">está</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">nosotros</td><td style="padding:8px;font-weight:700;color:var(--accent);">estamos</td></tr>
+<tr><td style="padding:8px;font-weight:700;">ellos / ustedes</td><td style="padding:8px;font-weight:700;color:var(--accent);">están</td></tr>
+</table>
+
+<h2>Wann ESTAR?</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--red);">
+<strong>Ort:</strong> Yo <strong>estoy</strong> en la oficina. María <strong>está</strong> en el parque.<br>
+<strong>Gefühl:</strong> Yo <strong>estoy</strong> feliz. Ella <strong>está</strong> triste.<br>
+<strong>Zustand:</strong> Él <strong>está</strong> cansado. Nosotros <strong>estamos</strong> ocupados.<br>
+<strong>Gesundheit:</strong> Yo <strong>estoy</strong> enfermo.
+</div>
+
+<h2>Merkhilfe</h2>
+<p style="color:var(--text2);line-height:1.6;">ESTAR = <strong>P.L.A.C.E.</strong><br>
+<strong>P</strong>osition (Ort) — Estoy en la casa.<br>
+<strong>L</strong>ocation (Ort) — Está en el parque.<br>
+<strong>A</strong>ction (Handlung) — Estoy comiendo.<br>
+<strong>C</strong>ondition (Zustand) — Estoy enfermo.<br>
+<strong>E</strong>motion (Gefühl) — Estoy feliz.</p>
+`
+  },
+  {
+    id: 'servsestar', icon: '🤔', title: 'SER vs ESTAR — Der Unterschied',
+    subtitle: 'Das gleiche Adjektiv kann verschiedenes bedeuten!',
+    content: `
+<h2>Die große Frage: SER oder ESTAR?</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:16px;">Faustregel: Kann es sich ändern? → ESTAR. Ist es dauerhaft? → SER.</p>
+
+<h2>Entscheidungshilfe</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid #60a5fa;">
+<strong>🔵 SER — Frage dich: "Was/Wer IST das?"</strong><br>
+<span style="color:var(--text2);">Beruf, Herkunft, Aussehen, Eigenschaft, Material, Uhrzeit</span>
+</div>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--red);">
+<strong>🔴 ESTAR — Frage dich: "Wie GEHT es? Wo IST es?"</strong><br>
+<span style="color:var(--text2);">Ort, Gefühl, Gesundheit, temporärer Zustand</span>
+</div>
+
+<h2>Beispiele zum Vergleich</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:10px;"><strong>Pedro <span style="color:#60a5fa;">es</span> alto.</strong><br><span style="color:var(--text2)">Pedro ist groß. (Immer)</span></td>
+</tr>
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:10px;"><strong>Pedro <span style="color:var(--red);">está</span> en la oficina.</strong><br><span style="color:var(--text2)">Pedro ist im Büro. (Gerade jetzt)</span></td>
+</tr>
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:10px;"><strong>María <span style="color:#60a5fa;">es</span> bonita.</strong><br><span style="color:var(--text2)">María ist hübsch. (Generell)</span></td>
+</tr>
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:10px;"><strong>María <span style="color:var(--red);">está</span> contenta.</strong><br><span style="color:var(--text2)">María ist zufrieden. (Gerade jetzt)</span></td>
+</tr>
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:10px;"><strong>Yo <span style="color:#60a5fa;">soy</span> alemán.</strong><br><span style="color:var(--text2)">Ich bin Deutscher. (Immer)</span></td>
+</tr>
+<tr>
+  <td style="padding:10px;"><strong>Yo <span style="color:var(--red);">estoy</span> cansado.</strong><br><span style="color:var(--text2)">Ich bin müde. (Gerade jetzt)</span></td>
+</tr>
+</table>
+
+<h2>Schnelltest</h2>
+<p style="color:var(--text2);line-height:1.6;">Wenn du unsicher bist, frag dich:<br>
+"Ist das <strong>morgen</strong> wahrscheinlich anders?"<br>
+→ Ja = ESTAR (temporär)<br>
+→ Nein = SER (permanent)</p>
+`
+  },
+  {
+    id: 'hora', icon: '🕐', title: 'La Hora — Uhrzeiten',
+    subtitle: '¿Qué hora es? Es la una. Son las dos y media.',
+    content: `
+<h2>Uhrzeiten sagen</h2>
+
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<strong>1:00 → ES LA UNA</strong> (Singular! Nur bei 1 Uhr)<br>
+<strong>2:00 → SON LAS DOS</strong> (Plural ab 2 Uhr)<br>
+<strong>3:00 → SON LAS TRES</strong><br>
+...bis 12.
+</div>
+
+<h2>Nach der vollen Stunde: Y</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">1:05</td><td style="padding:8px;">Es la una <strong>y cinco</strong></td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">1:10</td><td style="padding:8px;">Es la una <strong>y diez</strong></td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">2:15</td><td style="padding:8px;">Son las dos <strong>y cuarto</strong> (Viertel)</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">2:20</td><td style="padding:8px;">Son las dos <strong>y veinte</strong></td></tr>
+<tr><td style="padding:8px;">2:30</td><td style="padding:8px;">Son las dos <strong>y media</strong> (halb)</td></tr>
+</table>
+
+<h2>Vor der nächsten Stunde: MENOS</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">1:40</td><td style="padding:8px;">Son las dos <strong>menos veinte</strong> (20 vor 2)</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">1:45</td><td style="padding:8px;">Son las dos <strong>menos cuarto</strong> (Viertel vor 2)</td></tr>
+<tr><td style="padding:8px;">1:50</td><td style="padding:8px;">Son las dos <strong>menos diez</strong> (10 vor 2)</td></tr>
+</table>
+
+<h2>Tageszeit</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">🌅 AM</td><td style="padding:8px;"><strong>de la mañana</strong></td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;">☀️ PM bis ~18:30</td><td style="padding:8px;"><strong>de la tarde</strong></td></tr>
+<tr><td style="padding:8px;">🌙 PM ab ~18:30</td><td style="padding:8px;"><strong>de la noche</strong></td></tr>
+</table>
+
+<p style="color:var(--text2);line-height:1.6;margin-top:12px;"><strong>Beispiel:</strong> 7:05 pm = Son las siete y cinco <strong>de la noche</strong></p>
+
+<h2>Fragen</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;">
+<strong>¿Qué hora es?</strong> = Wie spät ist es?<br>
+<strong>¿A qué hora es la clase?</strong> = Um wie viel Uhr ist der Unterricht?<br>
+→ La clase es <strong>a las</strong> ocho de la mañana.
+</div>
+`
+  },
+];
+
+function renderGramOverview() {
+  const el = document.getElementById('gram-overview');
+  el.style.display = '';
+  document.getElementById('gram-detail').style.display = 'none';
+  el.innerHTML = GRAMMAR.map(g => `
+    <div class="deck-item" onclick="showGramLesson('${g.id}')">
+      <div class="info">
+        <div class="name">${g.icon} ${g.title}</div>
+        <div class="count">${g.subtitle}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showGramLesson(id) {
+  const g = GRAMMAR.find(x => x.id === id);
+  document.getElementById('gram-overview').style.display = 'none';
+  document.getElementById('gram-detail').style.display = 'block';
+  document.getElementById('gram-content').innerHTML = g.content;
+}
+
+function showGramOverview() {
+  document.getElementById('gram-overview').style.display = '';
+  document.getElementById('gram-detail').style.display = 'none';
 }
 
 // ============================================================
