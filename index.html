@@ -233,6 +233,34 @@ nav button .icon { font-size: 22px; }
 .quiz-score .num { font-size: 28px; font-weight: 700; }
 .quiz-score .lbl { font-size: 12px; color: var(--text2); }
 
+/* ---- REVIEW BANNER ---- */
+.review-banner {
+  background: linear-gradient(135deg, #8b5cf6 0%, #e94560 100%);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.35);
+  cursor: pointer;
+  transition: transform .15s;
+}
+.review-banner:active { transform: scale(.98); }
+.review-banner .info .title { font-size: 16px; font-weight: 700; color: #fff; }
+.review-banner .info .sub { font-size: 12px; color: #ffffffcc; margin-top: 2px; }
+.review-banner .badge {
+  background: #fff; color: #8b5cf6;
+  font-weight: 800; font-size: 18px;
+  border-radius: 20px; padding: 6px 14px;
+  flex-shrink: 0;
+}
+.review-info-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 12px 16px; margin-bottom: 14px;
+  font-size: 13px; color: var(--text2);
+  border-left: 3px solid #4ade80;
+}
+
 /* ---- SETTINGS ---- */
 .setting-row {
   background: var(--card); border-radius: 12px; padding: 16px;
@@ -2155,6 +2183,89 @@ function saveProgress(p) {
   saveProgressToDB(p);
 }
 
+// ---- Review (Spaced Repetition) ----
+const REVIEW_INTERVALS_DAYS = [1, 3, 7, 14, 30, 90, 180];
+const DAY_MS = 86400000;
+let _reviewCache = null;
+
+function getReview() {
+  if (_reviewCache) return _reviewCache;
+  _reviewCache = JSON.parse(localStorage.getItem('esp-review') || '{}');
+  return _reviewCache;
+}
+
+function saveReview(r) {
+  _reviewCache = r;
+  try { localStorage.setItem('esp-review', JSON.stringify(r)); } catch {}
+  saveReviewToDB(r);
+}
+
+async function saveReviewToDB(r) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(r, 'review');
+  } catch {}
+}
+
+async function loadReviewFromDB() {
+  try {
+    const db = await openDB();
+    return await new Promise(resolve => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get('review');
+      req.onsuccess = () => resolve(req.result || {});
+      req.onerror = () => resolve({});
+    });
+  } catch { return {}; }
+}
+
+function reviewDueAt(entry) {
+  if (!entry) return 0;
+  const days = REVIEW_INTERVALS_DAYS[Math.min(entry.l, REVIEW_INTERVALS_DAYS.length - 1)];
+  return entry.t + days * DAY_MS;
+}
+
+function isReviewDue(entry) {
+  return Date.now() >= reviewDueAt(entry);
+}
+
+function collectMasteredCards() {
+  const review = getReview();
+  const progress = getProgress();
+  const due = [];
+  let masteredCount = 0;
+  let earliestNext = Infinity;
+  DECKS.forEach(deck => {
+    deck.cards.forEach((c, i) => {
+      const key = deck.id + '_' + i;
+      if ((progress[key] || 0) >= 4) {
+        masteredCount++;
+        const entry = review[key];
+        if (isReviewDue(entry)) {
+          due.push({ es: c[0], de: c[1], idx: i, deckId: deck.id, deckName: deck.name, deckIcon: deck.icon, key });
+        } else {
+          const next = reviewDueAt(entry);
+          if (next < earliestNext) earliestNext = next;
+        }
+      }
+    });
+  });
+  return { due, masteredCount, earliestNext };
+}
+
+function formatReviewWait(timestamp) {
+  if (timestamp === Infinity) return null;
+  const ms = timestamp - Date.now();
+  if (ms <= 0) return 'jetzt';
+  const days = Math.ceil(ms / DAY_MS);
+  if (days <= 1) {
+    const hours = Math.ceil(ms / 3600000);
+    return `in ${hours} Std.`;
+  }
+  return `in ${days} Tagen`;
+}
+
 // Restore from IndexedDB on startup (before anything renders)
 async function initProgress() {
   const ls = JSON.parse(localStorage.getItem('esp-progress') || '{}');
@@ -2176,6 +2287,38 @@ async function initProgress() {
     saveProgressToDB(ls);
   } else {
     _progressCache = ls;
+  }
+
+  // Restore review data
+  const lsReview = JSON.parse(localStorage.getItem('esp-review') || '{}');
+  let dbReview = {};
+  try { dbReview = await loadReviewFromDB(); } catch {}
+  const lsRCount = Object.keys(lsReview).length;
+  const dbRCount = Object.keys(dbReview).length;
+  if (dbRCount > lsRCount) {
+    _reviewCache = dbReview;
+    try { localStorage.setItem('esp-review', JSON.stringify(dbReview)); } catch {}
+  } else if (lsRCount > dbRCount) {
+    _reviewCache = lsReview;
+    saveReviewToDB(lsReview);
+  } else {
+    _reviewCache = lsReview;
+  }
+
+  // Migration: für alle bereits gemeisterten Karten ohne Review-Eintrag → SOFORT fällig
+  // (t=0 → due in der Vergangenheit → erscheint sofort im Wiederholungs-Banner)
+  const progress = _progressCache;
+  const review = _reviewCache;
+  let migrated = 0;
+  Object.keys(progress).forEach(key => {
+    if (progress[key] >= 4 && !review[key]) {
+      review[key] = { l: 0, t: 0 };
+      migrated++;
+    }
+  });
+  if (migrated > 0) {
+    saveReview(review);
+    console.log('Review-System initialisiert für', migrated, 'gemeisterte Karten (alle sofort fällig)');
   }
 }
 
@@ -2247,6 +2390,26 @@ function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
 
+  // Review-Banner
+  const { due, masteredCount, earliestNext } = collectMasteredCards();
+  let reviewHtml = '';
+  if (due.length > 0) {
+    reviewHtml = `
+      <div class="review-banner" onclick="startReviewSession()">
+        <div class="info">
+          <div class="title">🔁 Wiederholung fällig</div>
+          <div class="sub">Halte gemeisterte Vokabeln im Langzeitgedächtnis</div>
+        </div>
+        <div class="badge">${due.length}</div>
+      </div>`;
+  } else if (masteredCount > 0 && earliestNext !== Infinity) {
+    const wait = formatReviewWait(earliestNext);
+    reviewHtml = `
+      <div class="review-info-card">
+        ✅ Alle ${masteredCount} gemeisterten Karten frisch — nächste Wiederholung ${wait}
+      </div>`;
+  }
+
   // Calculate stats for each deck
   const deckStats = DECKS.map(d => {
     let mastered = 0, inProgress = 0, totalPoints = 0;
@@ -2282,7 +2445,7 @@ function renderDecks() {
   const active = deckStats.filter(s => s.pct < 100);
   const completed = deckStats.filter(s => s.pct === 100);
 
-  let html = '';
+  let html = reviewHtml;
 
   // Active decks
   html += active.map(({ deck: d, mastered, inProgress, pct }) => {
@@ -2398,8 +2561,13 @@ function showNextCard() {
   const card = deckCards[deckIndex];
   const stage = Math.max(card.stage, 1); // at least stage 1
   document.getElementById('card-counter').textContent = `${deckIndex + 1} / ${deckCards.length}`;
-  document.getElementById('stage-label').innerHTML =
-    `<span class="stage-badge ${STAGE_CLASSES[stage]}">${STAGE_NAMES[stage]}</span>`;
+  if (currentDeck._isReview) {
+    document.getElementById('stage-label').innerHTML =
+      `<span class="stage-badge s4" style="background:#8b5cf620;color:#a78bfa;">🔁 Wiederholung</span>`;
+  } else {
+    document.getElementById('stage-label').innerHTML =
+      `<span class="stage-badge ${STAGE_CLASSES[stage]}">${STAGE_NAMES[stage]}</span>`;
+  }
 
   if (stage === 1) showMC(card);
   else if (stage === 2) showFlash(card);
@@ -2575,10 +2743,43 @@ function typeEsCheck() {
 function advanceCard(correct) {
   const card = deckCards[deckIndex];
   const progress = getProgress();
+  const review = getReview();
+
+  // Review-Mode: Karten kommen aus mehreren Decks, identifiziert durch card.deckId
+  if (currentDeck._isReview) {
+    const realKey = card.deckId + '_' + card.idx;
+    if (correct) {
+      const entry = review[realKey] || { l: -1, t: 0 };
+      const newL = Math.min(entry.l + 1, REVIEW_INTERVALS_DAYS.length - 1);
+      review[realKey] = { l: newL, t: Date.now() };
+      saveReview(review);
+    } else {
+      // Karte zurück ins normale System: Stage 2 (Flashcard), Review-Eintrag löschen
+      delete review[realKey];
+      saveReview(review);
+      progress[realKey] = 2;
+      saveProgress(progress);
+      // Karte wieder anhängen für Retry in dieser Session
+      if (deckIndex + 2 < deckCards.length) {
+        deckCards.splice(deckIndex + 3, 0, { ...card });
+      } else {
+        deckCards.push({ ...card });
+      }
+    }
+    return;
+  }
+
+  // Normaler Modus
   const key = currentDeck.id + '_' + card.idx;
   const cur = progress[key] || 0;
   if (correct) {
-    progress[key] = Math.min(cur + 1, 4); // 4 = gemeistert
+    const newStage = Math.min(cur + 1, 4);
+    progress[key] = newStage;
+    // Wenn neu gemeistert: Review-Eintrag erstellen (in 1 Tag wieder fällig)
+    if (cur < 4 && newStage === 4) {
+      review[key] = { l: 0, t: Date.now() };
+      saveReview(review);
+    }
   } else {
     progress[key] = Math.max(cur - 1, 1); // never below 1 once seen
     // Re-add card later in this session for retry
@@ -2590,6 +2791,38 @@ function advanceCard(correct) {
   }
   card.stage = progress[key];
   saveProgress(progress);
+}
+
+// ---- Review Session: alle fälligen Karten quer aus allen Decks ----
+function startReviewSession() {
+  const { due } = collectMasteredCards();
+  if (due.length === 0) return;
+
+  // Pseudo-Deck für Review
+  currentDeck = {
+    id: '_review_',
+    _isReview: true,
+    name: 'Wiederholung',
+    icon: '🔁',
+    cards: due.map(c => [c.es, c.de]),
+  };
+  // Karten mit deckId/idx referenz für Review-Logik
+  deckCards = due.map(c => ({
+    es: c.es, de: c.de, idx: c.idx, deckId: c.deckId,
+    stage: 2, // immer Flashcard im Review
+  }));
+  // Mischen
+  deckCards.sort(() => Math.random() - 0.5);
+  // Auf max 20 begrenzen pro Session (Tim soll Erfolg sehen)
+  if (deckCards.length > 20) deckCards = deckCards.slice(0, 20);
+
+  deckIndex = 0;
+  sessionCorrect = 0;
+  sessionTotal = 0;
+  cardHistory = [];
+  document.getElementById('deck-overview').style.display = 'none';
+  document.getElementById('deck-session').style.display = 'block';
+  showNextCard();
 }
 
 // ---- Skip (Später) ----
