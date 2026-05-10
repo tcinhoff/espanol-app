@@ -1740,6 +1740,60 @@ const DECKS = [
       ['Ellos _____ dónde vivo. (wissen)', 'saben'],
     ]
   },
+  {
+    id: 'reflexiv1', name: 'Reflexive Verben: Routine', icon: '🪥',
+    cards: [
+      ['despertarse', 'aufwachen'],
+      ['levantarse', 'aufstehen'],
+      ['ducharse', 'duschen'],
+      ['lavarse', 'sich waschen'],
+      ['afeitarse', 'sich rasieren'],
+      ['cepillarse', 'sich die Zähne putzen'],
+      ['peinarse', 'sich kämmen'],
+      ['maquillarse', 'sich schminken'],
+      ['vestirse', 'sich ankleiden'],
+      ['ponerse', 'sich etwas anziehen (Kleidungsstück)'],
+      ['desvestirse', 'sich entkleiden'],
+      ['quitarse', 'etwas ausziehen (z.B. Jacke)'],
+    ]
+  },
+  {
+    id: 'reflexiv2', name: 'Reflexive Verben: Alltag', icon: '🪞',
+    cards: [
+      ['llamarse', 'heißen'],
+      ['sentarse', 'sich hinsetzen'],
+      ['acostarse', 'ins Bett gehen'],
+      ['dormirse', 'einschlafen'],
+      ['sentirse', 'sich fühlen'],
+      ['quedarse', 'bleiben'],
+      ['irse', 'weggehen'],
+      ['casarse', 'heiraten'],
+      ['mirarse', 'sich im Spiegel ansehen'],
+      ['limpiarse', 'sich putzen / reinigen'],
+      ['verse', 'sich sehen'],
+    ]
+  },
+  {
+    id: 'conj_reflexiv', name: 'Reflexive Verben konjugieren', icon: '🔃',
+    fixedDirection: true,
+    cards: [
+      ['Yo _____ por la mañana. (peinarse)', 'me peino'],
+      ['Él _____ todos los días. (afeitarse)', 'se afeita'],
+      ['Tú _____ a las 5 a.m. (bañarse)', 'te bañas'],
+      ['Nosotros _____ una chaqueta. (ponerse)', 'nos ponemos'],
+      ['Ellos _____ lentamente. (vestirse)', 'se visten'],
+      ['Juan y María _____ las manos. (lavarse)', 'se lavan'],
+      ['Tú _____ Pedro. (llamarse)', 'te llamas'],
+      ['Matías _____ muy tarde. (acostarse)', 'se acuesta'],
+      ['José y yo _____ en el parque. (sentarse)', 'nos sentamos'],
+      ['Ellas _____ a las 9:00 am. (despertarse)', 'se despiertan'],
+      ['Los trabajadores _____ el casco. (ponerse)', 'se ponen'],
+      ['La madre _____ muy tarde. (dormirse)', 'se duerme'],
+      ['Tú _____ los dientes. (cepillarse)', 'te cepillas'],
+      ['Usted _____ en el espejo. (mirarse)', 'se mira'],
+      ['La secretaría _____ en la oficina. (quedarse)', 'se queda'],
+    ]
+  },
 ];
 
 const QUESTS = [
@@ -3963,6 +4017,81 @@ Egal wohin oder was passieren wird — das <strong>a</strong> ist Pflicht.
 <strong>Tú <span style="color:#fbbf24;">sabes</span> hablar español.</strong><br>
 <span style="color:var(--text2);">Du kannst Spanisch sprechen.</span>
 </div>
+`
+  },
+  {
+    id: 'reflexiv', icon: '🔃', title: 'Reflexive Verben — Ich mache etwas an MIR',
+    subtitle: 'me peino, te llamas, se duerme — Pronomen + Verb',
+    content: `
+<h2>Was sind reflexive Verben?</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:16px;">Verben, bei denen die Handlung auf das Subjekt selbst zurückfällt: "ich wasche <strong>mich</strong>", "er rasiert <strong>sich</strong>". Im Spanischen erkennt man sie am <strong>-se</strong> am Ende: lavarse, peinarse, dormirse.</p>
+
+<h2>Reflexivpronomen</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">yo</td><td style="padding:8px;font-weight:700;color:var(--accent);">me</td><td style="padding:8px;color:var(--text2);">mich</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">tú</td><td style="padding:8px;font-weight:700;color:var(--accent);">te</td><td style="padding:8px;color:var(--text2);">dich</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">él / ella / usted</td><td style="padding:8px;font-weight:700;color:var(--accent);">se</td><td style="padding:8px;color:var(--text2);">sich</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">nosotros</td><td style="padding:8px;font-weight:700;color:var(--accent);">nos</td><td style="padding:8px;color:var(--text2);">uns</td></tr>
+<tr><td style="padding:8px;font-weight:700;">ellos / ustedes</td><td style="padding:8px;font-weight:700;color:var(--accent);">se</td><td style="padding:8px;color:var(--text2);">sich</td></tr>
+</table>
+
+<h2>Bauanleitung</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<table style="width:100%;border-collapse:collapse;">
+<tr style="border-bottom:1px solid #ffffff15;">
+  <td style="padding:6px;color:var(--text2);">Pronomen</td>
+  <td style="padding:6px;color:#4ade80;font-weight:700;">Reflexiv</td>
+  <td style="padding:6px;color:var(--accent);font-weight:700;">Verb konjugiert</td>
+</tr>
+<tr><td style="padding:6px;">yo</td><td style="padding:6px;color:#4ade80;">me</td><td style="padding:6px;color:var(--accent);">afeito</td></tr>
+<tr><td style="padding:6px;">tú</td><td style="padding:6px;color:#4ade80;">te</td><td style="padding:6px;color:var(--accent);">afeitas</td></tr>
+<tr><td style="padding:6px;">él/ella/usted</td><td style="padding:6px;color:#4ade80;">se</td><td style="padding:6px;color:var(--accent);">afeita</td></tr>
+<tr><td style="padding:6px;">nosotros</td><td style="padding:6px;color:#4ade80;">nos</td><td style="padding:6px;color:var(--accent);">afeitamos</td></tr>
+<tr><td style="padding:6px;">ellos/ustedes</td><td style="padding:6px;color:#4ade80;">se</td><td style="padding:6px;color:var(--accent);">afeitan</td></tr>
+</table>
+</div>
+
+<h2>Typischer Tagesablauf</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;">
+<span style="color:var(--text2);">Yo <strong>me despierto</strong> a las 6:30.</span> — Ich wache um 6:30 auf.<br>
+<span style="color:var(--text2);">Yo <strong>me levanto</strong> inmediatamente.</span> — Ich stehe sofort auf.<br>
+<span style="color:var(--text2);">Yo <strong>me ducho</strong> y <strong>me visto</strong>.</span> — Ich dusche und ziehe mich an.<br>
+<span style="color:var(--text2);">Yo <strong>me peino</strong> y <strong>me cepillo</strong> los dientes.</span> — Ich kämme mich und putze Zähne.<br>
+<span style="color:var(--text2);">Yo <strong>me pongo</strong> una chaqueta.</span> — Ich ziehe mir eine Jacke an.<br>
+<span style="color:var(--text2);">Yo <strong>me acuesto</strong> a las 10:00.</span> — Ich gehe um 10 ins Bett.<br>
+<span style="color:var(--text2);">Yo <strong>me duermo</strong> a las 10:30.</span> — Ich schlafe um 10:30 ein.
+</div>
+
+<h2>Achtung: Stammwechsel!</h2>
+<p style="color:var(--text2);line-height:1.6;margin-bottom:12px;">Manche reflexiven Verben haben den gleichen Stammwechsel wie normale Verben:</p>
+<table style="width:100%;border-collapse:collapse;margin:12px 0;">
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">vestirse (e→i)</td><td style="padding:8px;color:var(--text2);">me visto, te vistes, se viste, nos vestimos</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">dormirse (o→ue)</td><td style="padding:8px;color:var(--text2);">me duermo, te duermes, se duerme, nos dormimos</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">acostarse (o→ue)</td><td style="padding:8px;color:var(--text2);">me acuesto, te acuestas, se acuesta, nos acostamos</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">despertarse (e→ie)</td><td style="padding:8px;color:var(--text2);">me despierto, te despiertas, se despierta, nos despertamos</td></tr>
+<tr style="border-bottom:1px solid #ffffff15;"><td style="padding:8px;font-weight:700;">sentarse (e→ie)</td><td style="padding:8px;color:var(--text2);">me siento, te sientas, se sienta, nos sentamos</td></tr>
+<tr><td style="padding:8px;font-weight:700;">ponerse (g-yo)</td><td style="padding:8px;color:var(--text2);">me pongo, te pones, se pone, nos ponemos</td></tr>
+</table>
+
+<h2>Wichtige Redewendungen</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid var(--accent);">
+<strong>¿Cómo se llama usted?</strong> — Wie heißen Sie?<br>
+<strong>Me llamo Tim.</strong> — Ich heiße Tim.<br>
+<strong>¿Cómo te sientes?</strong> — Wie fühlst du dich?<br>
+<strong>Me siento bien.</strong> — Ich fühle mich gut.
+</div>
+
+<h2>Reflexiv vs. Nicht-Reflexiv</h2>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid #60a5fa;">
+<strong>lavar</strong> = waschen (etwas anderes)<br>
+<span style="color:var(--text2);">Yo <strong>lavo</strong> el carro. — Ich wasche das Auto.</span>
+</div>
+<div style="background:var(--card);border-radius:12px;padding:14px;margin:8px 0;border-left:3px solid #fbbf24;">
+<strong>lavarse</strong> = sich waschen (sich selbst)<br>
+<span style="color:var(--text2);">Yo <strong>me lavo</strong> las manos. — Ich wasche mir die Hände.</span>
+</div>
+
+<p style="color:var(--text2);line-height:1.6;margin-top:16px;">💡 Übe die Decks <strong>🪥 Reflexive Verben: Routine</strong>, <strong>🪞 Alltag</strong> und <strong>🔃 Konjugieren</strong>!</p>
 `
   },
 ];
