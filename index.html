@@ -584,6 +584,15 @@ nav button .icon { font-size: 22px; }
       <div class="sublabel" id="stats-learned">0 / 0</div>
     </div>
   </div>
+  <h2>Cloud-Sync</h2>
+  <div class="setting-row">
+    <div>
+      <div class="label">Geräte-Synchronisierung</div>
+      <div class="sublabel" id="sync-status">☁️ Nicht synchronisiert</div>
+    </div>
+    <button onclick="syncNow().then(()=>renderSettings())" style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Jetzt syncen</button>
+  </div>
+
   <h2>Backup</h2>
   <div class="setting-row">
     <div>
@@ -2385,6 +2394,150 @@ async function initProgress() {
 }
 
 // ============================================================
+//  CLOUD SYNC (Supabase)
+// ============================================================
+const SUPABASE_URL = 'https://jtxyhuhdenhkxygderxk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0eHlodWhkZW5oa3h5Z2RlcnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDc0MDUsImV4cCI6MjA5NDg4MzQwNX0.IYlROv7KDZHGa-feOEPfPinkNl1qm5sELa29DxT1V20';
+const SYNC_ID = 'tim';
+let _lastSyncAt = 0;
+let _syncTimer = null;
+let _syncStatus = 'idle';
+
+function sbHeaders() {
+  return {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+  };
+}
+
+async function cloudLoad() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,updated_at`,
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) throw new Error(res.status);
+    const rows = await res.json();
+    if (rows.length === 0) return null;
+    return rows[0];
+  } catch (e) {
+    console.warn('Cloud load failed:', e.message);
+    return null;
+  }
+}
+
+async function cloudSave(progress, review) {
+  try {
+    const body = {
+      id: SYNC_ID,
+      progress: progress,
+      review: review,
+      updated_at: new Date().toISOString(),
+    };
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}`,
+      { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(body) }
+    );
+    if (!res.ok) throw new Error(res.status);
+    _lastSyncAt = Date.now();
+    _syncStatus = 'synced';
+    updateSyncUI();
+    return true;
+  } catch (e) {
+    console.warn('Cloud save failed:', e.message);
+    _syncStatus = 'offline';
+    updateSyncUI();
+    return false;
+  }
+}
+
+function mergeProgress(local, remote) {
+  const merged = { ...local };
+  Object.keys(remote).forEach(key => {
+    if (!merged[key] || remote[key] > merged[key]) {
+      merged[key] = remote[key];
+    }
+  });
+  return merged;
+}
+
+function mergeReview(local, remote) {
+  const merged = { ...local };
+  Object.keys(remote).forEach(key => {
+    if (!merged[key]) {
+      merged[key] = remote[key];
+    } else {
+      if (remote[key].t > merged[key].t) {
+        merged[key] = remote[key];
+      }
+    }
+  });
+  return merged;
+}
+
+async function syncNow() {
+  _syncStatus = 'syncing';
+  updateSyncUI();
+
+  const cloud = await cloudLoad();
+  if (!cloud) {
+    await cloudSave(getProgress(), getReview());
+    return;
+  }
+
+  const localProgress = getProgress();
+  const localReview = getReview();
+  const localUpdated = parseInt(localStorage.getItem('esp-sync-ts') || '0');
+  const cloudUpdated = new Date(cloud.updated_at).getTime();
+
+  const mergedProgress = mergeProgress(localProgress, cloud.progress || {});
+  const mergedReview = mergeReview(localReview, cloud.review || {});
+
+  _progressCache = mergedProgress;
+  saveProgress(mergedProgress);
+  _reviewCache = mergedReview;
+  saveReview(mergedReview);
+
+  await cloudSave(mergedProgress, mergedReview);
+  localStorage.setItem('esp-sync-ts', String(Date.now()));
+  _syncStatus = 'synced';
+  _lastSyncAt = Date.now();
+  updateSyncUI();
+  console.log('Cloud sync complete');
+}
+
+function scheduleSyncSoon() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null;
+    syncNow().catch(() => {});
+  }, 5000);
+  _syncStatus = 'pending';
+}
+
+function updateSyncUI() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const icons = { idle: '☁️', syncing: '🔄', synced: '✅', offline: '⚠️', pending: '⏳' };
+  const labels = { idle: 'Nicht synchronisiert', syncing: 'Synchronisiere...', synced: 'Synchronisiert', offline: 'Offline', pending: 'Wird gleich synchronisiert...' };
+  el.textContent = (icons[_syncStatus] || '') + ' ' + (labels[_syncStatus] || '');
+}
+
+const _origSaveProgress = saveProgress;
+saveProgress = function(p) {
+  _origSaveProgress(p);
+  scheduleSyncSoon();
+};
+
+const _origSaveReview = saveReview;
+saveReview = function(r) {
+  _origSaveReview(r);
+  scheduleSyncSoon();
+};
+
+// ============================================================
 //  NAVIGATION
 // ============================================================
 function showPage(id) {
@@ -4164,8 +4317,9 @@ function showGramOverview() {
 // ============================================================
 
 // First: restore progress from IndexedDB if localStorage was cleared
-initProgress().then(() => {
+initProgress().then(async () => {
   renderDecks();
+  syncNow().catch(() => {}).then(() => renderDecks());
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
