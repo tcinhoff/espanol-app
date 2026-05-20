@@ -478,6 +478,16 @@ nav button .icon { font-size: 22px; }
       </div>
     </div>
 
+    <!-- Review-Modus Toggle -->
+    <div id="review-toggle" style="display:none;text-align:center;margin-bottom:8px;">
+      <div style="display:inline-flex;border:1px solid #ffffff20;border-radius:10px;overflow:hidden;">
+        <button onclick="setReviewMode(false)" id="rm-flash"
+          style="padding:7px 14px;border:none;font-size:13px;cursor:pointer;background:#8b5cf6;color:#fff;transition:background .2s;">🔄 Flashcard</button>
+        <button onclick="setReviewMode(true)" id="rm-type"
+          style="padding:7px 14px;border:none;font-size:13px;cursor:pointer;background:var(--card);color:var(--text2);transition:background .2s;">✏️ Schreiben</button>
+      </div>
+    </div>
+
     <!-- Navigation: Zurück + Später -->
     <div id="skip-row" style="display:flex;justify-content:center;gap:12px;margin-top:12px;">
       <button id="prev-card-btn" onclick="prevCard()" style="background:none;border:1px solid #ffffff20;color:var(--text2);padding:8px 20px;border-radius:10px;font-size:13px;cursor:pointer;display:none;">← Zurück</button>
@@ -2579,10 +2589,23 @@ function startDeck(id) {
 }
 
 let sessionCorrect = 0, sessionTotal = 0;
+let reviewWriteMode = false;
+
+function setReviewMode(writeMode) {
+  reviewWriteMode = writeMode;
+  document.getElementById('rm-flash').style.background = writeMode ? 'var(--card)' : '#8b5cf6';
+  document.getElementById('rm-flash').style.color = writeMode ? 'var(--text2)' : '#fff';
+  document.getElementById('rm-type').style.background = writeMode ? '#8b5cf6' : 'var(--card)';
+  document.getElementById('rm-type').style.color = writeMode ? '#fff' : 'var(--text2)';
+  // Re-show current card in new mode (don't advance)
+  hideAllStages();
+  showNextCard();
+}
 
 function showDeckOverview() {
   document.getElementById('deck-overview').style.display = '';
   document.getElementById('deck-session').style.display = 'none';
+  document.getElementById('review-toggle').style.display = 'none';
   hideAllStages();
   renderDecks();
 }
@@ -2618,10 +2641,18 @@ function showNextCard() {
   if (currentDeck._isReview) {
     document.getElementById('stage-label').innerHTML =
       `<span class="stage-badge s4" style="background:#8b5cf620;color:#a78bfa;">🔁 Wiederholung</span>`;
-  } else {
-    document.getElementById('stage-label').innerHTML =
-      `<span class="stage-badge ${STAGE_CLASSES[stage]}">${STAGE_NAMES[stage]}</span>`;
+    document.getElementById('review-toggle').style.display = '';
+    if (reviewWriteMode) {
+      showTypeEs(card);
+    } else {
+      showFlash(card);
+    }
+    return;
   }
+
+  document.getElementById('review-toggle').style.display = 'none';
+  document.getElementById('stage-label').innerHTML =
+    `<span class="stage-badge ${STAGE_CLASSES[stage]}">${STAGE_NAMES[stage]}</span>`;
 
   if (stage === 1) showMC(card);
   else if (stage === 2) showFlash(card);
@@ -2694,9 +2725,13 @@ let _flashRevealed = false;
 
 function showFlash(card) {
   document.getElementById('stage-flash').style.display = 'block';
-  const showEsFirst = currentDeck.fixedDirection ? true : Math.random() > 0.5;
-  const frontLabel = currentDeck.fixedDirection ? 'Wer?' : (showEsFirst ? 'Español' : 'Deutsch');
-  const backLabel = currentDeck.fixedDirection ? 'Pronomen' : (showEsFirst ? 'Deutsch' : 'Español');
+  // Review: immer DE zuerst → Tim produziert ES
+  const showEsFirst = currentDeck._isReview ? false :
+    (currentDeck.fixedDirection ? true : Math.random() > 0.5);
+  const frontLabel = currentDeck._isReview ? 'Deutsch' :
+    (currentDeck.fixedDirection ? 'Wer?' : (showEsFirst ? 'Español' : 'Deutsch'));
+  const backLabel = currentDeck._isReview ? 'Español' :
+    (currentDeck.fixedDirection ? 'Pronomen' : (showEsFirst ? 'Deutsch' : 'Español'));
   document.getElementById('fc-front-lang').textContent = frontLabel;
   document.getElementById('fc-front-word').textContent = showEsFirst ? card.es : card.de;
   _currentCardBack = {
@@ -2741,10 +2776,13 @@ function markCard(correct) {
 // ---- Stage 3: Type ES (see DE, type ES — Produce!) ----
 function showTypeEs(card) {
   document.getElementById('stage-type-es').style.display = 'block';
-  // fixedDirection: show ES (name) as question, type DE (pronoun) as answer
-  const question = currentDeck.fixedDirection ? card.es : card.de;
-  const placeholder = currentDeck.fixedDirection ? 'Pronomen tippen...' : 'Español tippen...';
-  const direction = currentDeck.fixedDirection ? 'Welches Pronomen?' : 'Deutsch → Español';
+  // Review: immer DE zeigen, ES tippen
+  const question = currentDeck._isReview ? card.de :
+    (currentDeck.fixedDirection ? card.es : card.de);
+  const placeholder = currentDeck._isReview ? 'Español tippen...' :
+    (currentDeck.fixedDirection ? 'Pronomen tippen...' : 'Español tippen...');
+  const direction = currentDeck._isReview ? 'Deutsch → Español' :
+    (currentDeck.fixedDirection ? 'Welches Pronomen?' : 'Deutsch → Español');
   document.getElementById('type-es-question').textContent = question;
   document.querySelector('#stage-type-es .direction').textContent = direction;
   const input = document.getElementById('type-es-input');
@@ -2770,8 +2808,9 @@ function typeEsCheck() {
   if (!answer) return;
 
   sessionTotal++;
-  // fixedDirection: answer is DE side (pronoun), otherwise ES side
-  const expectedAnswer = currentDeck.fixedDirection ? card.de : card.es;
+  // Review: immer ES erwartet. fixedDirection: DE side. Sonst: ES side.
+  const expectedAnswer = currentDeck._isReview ? card.es :
+    (currentDeck.fixedDirection ? card.de : card.es);
   const correct = normalize(answer) === normalize(expectedAnswer);
 
   if (correct) {
