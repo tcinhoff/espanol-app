@@ -399,8 +399,8 @@ nav button .icon { font-size: 22px; }
 </head>
 <body>
 
-<!-- ===== SPICKZETTEL ===== -->
-<div class="page active" id="page-spick">
+<!-- ===== SPICKZETTEL (hidden) ===== -->
+<div class="page" id="page-spick" style="display:none !important">
   <h1>Spickzettel</h1>
   <div id="spick-overview" class="situation-grid"></div>
   <div id="spick-detail" style="display:none">
@@ -428,7 +428,7 @@ nav button .icon { font-size: 22px; }
 </div>
 
 <!-- ===== VOKABELN ===== -->
-<div class="page" id="page-vokabeln">
+<div class="page active" id="page-vokabeln">
   <h1>Vokabeln</h1>
   <div id="deck-overview" class="deck-grid"></div>
   <div id="deck-session" style="display:none">
@@ -504,8 +504,8 @@ nav button .icon { font-size: 22px; }
   </div>
 </div>
 
-<!-- ===== SIDEQUESTS ===== -->
-<div class="page" id="page-quests">
+<!-- ===== SIDEQUESTS (hidden) ===== -->
+<div class="page" id="page-quests" style="display:none !important">
   <h1>Sidequests</h1>
   <p style="color:var(--text2);margin-bottom:16px;font-size:14px;">Deine Missionen für draußen. Tippe auf eine Quest für den kompletten Spickzettel.</p>
   <div id="quest-overview" class="deck-grid"></div>
@@ -615,10 +615,8 @@ nav button .icon { font-size: 22px; }
 
 <!-- ===== NAV ===== -->
 <nav>
-  <button class="active" onclick="showPage('spick')"><span class="icon">📋</span>Spick</button>
-  <button onclick="showPage('vokabeln')"><span class="icon">🗂</span>Vokabeln</button>
+  <button class="active" onclick="showPage('vokabeln')"><span class="icon">🗂</span>Vokabeln</button>
   <button onclick="showPage('grammatik')"><span class="icon">📖</span>Grammatik</button>
-  <button onclick="showPage('quests')"><span class="icon">🗺</span>Quests</button>
   <button onclick="showPage('settings')"><span class="icon">⚙</span>Mehr</button>
 </nav>
 
@@ -2393,7 +2391,7 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('nav button').forEach((b, i) => {
-    b.classList.toggle('active', ['spick','vokabeln','grammatik','quests','settings'][i] === id);
+    b.classList.toggle('active', ['vokabeln','grammatik','settings'][i] === id);
   });
   if (id === 'vokabeln') renderDecks();
   if (id === 'grammatik') renderGramOverview();
@@ -4167,7 +4165,7 @@ function showGramOverview() {
 
 // First: restore progress from IndexedDB if localStorage was cleared
 initProgress().then(() => {
-  renderSpickOverview();
+  renderDecks();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
