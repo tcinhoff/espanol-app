@@ -2830,13 +2830,24 @@ function showPlacementCard() {
 
   const correctAnswer = showEsFirst ? card.de : card.es;
   const allAnswers = [];
-  DECKS.forEach(d => {
-    if (d.fixedDirection) return;
-    d.cards.forEach(c => {
+  // Ablenker zuerst aus dem EIGENEN Deck (gleicher Typ: Verben, Nomen, etc.)
+  const ownDeck = DECKS.find(d => d.id === card.deckId);
+  if (ownDeck) {
+    ownDeck.cards.forEach(c => {
       const a = showEsFirst ? c[1] : c[0];
       if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
     });
-  });
+  }
+  // Fallback: aus anderen Decks nur wenn nicht genug
+  if (allAnswers.length < 3) {
+    DECKS.forEach(d => {
+      if (d.fixedDirection || d.id === card.deckId) return;
+      d.cards.forEach(c => {
+        const a = showEsFirst ? c[1] : c[0];
+        if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
+      });
+    });
+  }
   const wrongs = allAnswers.sort(() => Math.random() - 0.5).slice(0, 3);
   const options = [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
 
