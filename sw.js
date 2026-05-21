@@ -1,4 +1,4 @@
-const CACHE_NAME = 'espanol-v21';
+const CACHE_NAME = 'espanol-v22';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

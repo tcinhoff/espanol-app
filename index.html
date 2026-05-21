@@ -3193,19 +3193,27 @@ function showMC(card) {
   document.getElementById('mc-feedback').className = 'quiz-feedback';
   document.getElementById('mc-feedback').textContent = '';
 
-  // Build 4 options: 1 correct + 3 random wrong
+  // Build 4 options: 1 correct + 3 random wrong from SAME deck
   const correctAnswer = esFirst ? card.de : card.es;
   const allAnswers = [];
-  currentDeck.cards.forEach(c => {
-    const a = esFirst ? c[1] : c[0];
-    if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
-  });
-  // If not enough unique answers in deck, pull from other decks
-  if (allAnswers.length < 3) {
-    DECKS.forEach(d => d.cards.forEach(c => {
+  // Im Review: Original-Deck der Karte finden; sonst: aktuelles Deck
+  const sourceDeck = (currentDeck._isReview && card.deckId)
+    ? DECKS.find(d => d.id === card.deckId) : currentDeck;
+  if (sourceDeck) {
+    sourceDeck.cards.forEach(c => {
       const a = esFirst ? c[1] : c[0];
       if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
-    }));
+    });
+  }
+  // Fallback nur wenn Deck zu klein (<4 Karten)
+  if (allAnswers.length < 3) {
+    DECKS.forEach(d => {
+      if (d.fixedDirection || d === sourceDeck) return;
+      d.cards.forEach(c => {
+        const a = esFirst ? c[1] : c[0];
+        if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
+      });
+    });
   }
   const wrongs = allAnswers.sort(() => Math.random() - 0.5).slice(0, 3);
   const options = [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
