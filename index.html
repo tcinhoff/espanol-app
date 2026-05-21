@@ -233,6 +233,37 @@ nav button .icon { font-size: 22px; }
 .quiz-score .num { font-size: 28px; font-weight: 700; }
 .quiz-score .lbl { font-size: 12px; color: var(--text2); }
 
+/* ---- WELCOME SCREEN ---- */
+.welcome-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+}
+.welcome-overlay h1 { font-size: 32px; margin-bottom: 8px; }
+.welcome-overlay .sub { color: var(--text2); margin-bottom: 32px; font-size: 15px; }
+.welcome-input {
+  width: 100%; max-width: 280px; padding: 14px; border-radius: 12px;
+  border: 2px solid #ffffff20; background: var(--card); color: var(--text);
+  font-size: 18px; text-align: center; outline: none; margin-bottom: 12px;
+}
+.welcome-input:focus { border-color: var(--accent); }
+.welcome-btn {
+  width: 100%; max-width: 280px; padding: 14px; border: none; border-radius: 12px;
+  background: var(--accent); color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; margin-bottom: 12px; transition: transform .1s;
+}
+.welcome-btn:active { transform: scale(.96); }
+.welcome-btn:disabled { opacity: .5; cursor: default; }
+.welcome-btn.secondary { background: var(--accent2); }
+.welcome-code {
+  font-family: monospace; font-size: 28px; font-weight: 800;
+  letter-spacing: 6px; color: var(--accent); margin: 12px 0;
+  background: var(--card); padding: 12px 24px; border-radius: 12px;
+}
+.welcome-error { color: var(--red); font-size: 14px; margin-top: 8px; min-height: 20px; }
+.welcome-link { color: var(--accent); cursor: pointer; font-size: 14px; margin-top: 16px; }
+
 /* ---- REVIEW BANNER ---- */
 .review-banner {
   background: linear-gradient(135deg, #8b5cf6 0%, #e94560 100%);
@@ -584,6 +615,14 @@ nav button .icon { font-size: 22px; }
       <div class="sublabel" id="stats-learned">0 / 0</div>
     </div>
   </div>
+  <h2>Dein Account</h2>
+  <div class="setting-row">
+    <div>
+      <div class="label" id="user-display-name">—</div>
+      <div class="sublabel">Code: <strong id="user-pin-display">—</strong> (für neue Geräte)</div>
+    </div>
+  </div>
+
   <h2>Cloud-Sync</h2>
   <div class="setting-row">
     <div>
@@ -619,6 +658,41 @@ nav button .icon { font-size: 22px; }
       <div class="sublabel">Alle Vokabeln als ungelernt markieren</div>
     </div>
     <button onclick="resetProgress()" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Reset</button>
+  </div>
+</div>
+
+<!-- ===== WELCOME ===== -->
+<div class="welcome-overlay" id="welcome-overlay" style="display:none">
+  <!-- Step 1: Name eingeben -->
+  <div id="welcome-step1">
+    <div style="font-size:48px;margin-bottom:16px;">🇪🇸</div>
+    <h1>Hola!</h1>
+    <div class="sub">Gib deinen Namen ein um loszulegen</div>
+    <input class="welcome-input" id="welcome-name" placeholder="Dein Name" autocomplete="off" autocapitalize="words">
+    <br>
+    <button class="welcome-btn" onclick="welcomeSubmitName()">Los geht's</button>
+    <div class="welcome-link" onclick="welcomeShowLink()">Ich habe schon einen Account auf einem anderen Gerät</div>
+    <div class="welcome-error" id="welcome-error"></div>
+  </div>
+  <!-- Step 2: Neuer User — Code anzeigen -->
+  <div id="welcome-step2" style="display:none">
+    <div style="font-size:48px;margin-bottom:16px;">🔑</div>
+    <h1>Dein Code</h1>
+    <div class="sub">Merke dir diesen Code — du brauchst ihn um dich auf einem anderen Gerät anzumelden</div>
+    <div class="welcome-code" id="welcome-pin"></div>
+    <button class="welcome-btn" onclick="welcomeFinish()">Verstanden, weiter!</button>
+  </div>
+  <!-- Step 3: Bestehendes Gerät — Code eingeben -->
+  <div id="welcome-step3" style="display:none">
+    <div style="font-size:48px;margin-bottom:16px;">📱</div>
+    <h1>Gerät verbinden</h1>
+    <div class="sub">Gib deinen Namen und den 6-stelligen Code ein</div>
+    <input class="welcome-input" id="link-name" placeholder="Dein Name" autocomplete="off" autocapitalize="words">
+    <input class="welcome-input" id="link-pin" placeholder="6-stelliger Code" autocomplete="off" inputmode="numeric" maxlength="6" style="letter-spacing:4px;">
+    <br>
+    <button class="welcome-btn" onclick="welcomeLink()">Verbinden</button>
+    <div class="welcome-link" onclick="welcomeShowNew()">Ich bin neu hier</div>
+    <div class="welcome-error" id="link-error"></div>
   </div>
 </div>
 
@@ -2398,7 +2472,7 @@ async function initProgress() {
 // ============================================================
 const SUPABASE_URL = 'https://jtxyhuhdenhkxygderxk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0eHlodWhkZW5oa3h5Z2RlcnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDc0MDUsImV4cCI6MjA5NDg4MzQwNX0.IYlROv7KDZHGa-feOEPfPinkNl1qm5sELa29DxT1V20';
-const SYNC_ID = 'tim';
+let SYNC_ID = localStorage.getItem('esp-user-id') || '';
 let _lastSyncAt = 0;
 let _syncTimer = null;
 let _syncStatus = 'idle';
@@ -2507,6 +2581,7 @@ function mergeReview(local, remote) {
 }
 
 async function syncNow() {
+  if (!SYNC_ID) return;
   _syncStatus = 'syncing';
   updateSyncUI();
 
@@ -2557,6 +2632,111 @@ function updateSyncUI() {
   const icons = { idle: '☁️', syncing: '🔄', synced: '✅', offline: '⚠️', pending: '⏳' };
   const labels = { idle: 'Nicht synchronisiert', syncing: 'Synchronisiere...', synced: 'Synchronisiert', offline: 'Offline', pending: 'Wird gleich synchronisiert...' };
   el.textContent = (icons[_syncStatus] || '') + ' ' + (labels[_syncStatus] || '');
+}
+
+// ---- User Management ----
+function generatePin() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function nameToId(name) {
+  return name.trim().toLowerCase().replace(/[^a-záéíóúñü0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+async function checkUserExists(userId) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${userId}&select=id,pin,display_name`,
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows.length > 0 ? rows[0] : null;
+  } catch { return null; }
+}
+
+async function createUser(userId, displayName, pin) {
+  try {
+    const body = {
+      id: userId, display_name: displayName, pin,
+      progress: {}, review: {}, progress_ts: {},
+      updated_at: new Date().toISOString(),
+    };
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/sync_data`,
+      { method: 'POST', headers: { ...sbHeaders(), 'Prefer': 'return=representation' }, body: JSON.stringify(body) }
+    );
+    return res.ok;
+  } catch { return false; }
+}
+
+function loginUser(userId) {
+  SYNC_ID = userId;
+  localStorage.setItem('esp-user-id', userId);
+}
+
+function welcomeShowLink() {
+  document.getElementById('welcome-step1').style.display = 'none';
+  document.getElementById('welcome-step3').style.display = '';
+}
+
+function welcomeShowNew() {
+  document.getElementById('welcome-step3').style.display = 'none';
+  document.getElementById('welcome-step1').style.display = '';
+}
+
+async function welcomeSubmitName() {
+  const name = document.getElementById('welcome-name').value.trim();
+  if (!name) return;
+  const userId = nameToId(name);
+  if (!userId) return;
+  document.getElementById('welcome-error').textContent = '';
+
+  const existing = await checkUserExists(userId);
+  if (existing) {
+    document.getElementById('welcome-error').textContent = 'Dieser Name ist schon vergeben. Wenn das dein Account ist, klicke "Ich habe schon einen Account".';
+    return;
+  }
+
+  const pin = generatePin();
+  const ok = await createUser(userId, name, pin);
+  if (!ok) {
+    document.getElementById('welcome-error').textContent = 'Fehler beim Erstellen. Bist du online?';
+    return;
+  }
+
+  loginUser(userId);
+  document.getElementById('welcome-pin').textContent = pin;
+  document.getElementById('welcome-step1').style.display = 'none';
+  document.getElementById('welcome-step2').style.display = '';
+}
+
+async function welcomeLink() {
+  const name = document.getElementById('link-name').value.trim();
+  const pin = document.getElementById('link-pin').value.trim();
+  if (!name || !pin) return;
+  document.getElementById('link-error').textContent = '';
+
+  const userId = nameToId(name);
+  const existing = await checkUserExists(userId);
+
+  if (!existing) {
+    document.getElementById('link-error').textContent = 'Kein Account mit diesem Namen gefunden.';
+    return;
+  }
+  if (existing.pin !== pin) {
+    document.getElementById('link-error').textContent = 'Falscher Code. Bitte prüfe den 6-stelligen Code.';
+    return;
+  }
+
+  loginUser(userId);
+  welcomeFinish();
+}
+
+async function welcomeFinish() {
+  document.getElementById('welcome-overlay').style.display = 'none';
+  await syncNow().catch(() => {});
+  renderDecks();
 }
 
 const _origSaveProgress = saveProgress;
@@ -3505,6 +3685,16 @@ function renderSettings() {
   }));
   document.getElementById('stats-learned').textContent = `${mastered} gemeistert · ${learning} am Lernen · ${total} gesamt`;
 
+  // User info laden
+  if (SYNC_ID) {
+    checkUserExists(SYNC_ID).then(user => {
+      if (user) {
+        document.getElementById('user-display-name').textContent = user.display_name || SYNC_ID;
+        document.getElementById('user-pin-display').textContent = user.pin || '—';
+      }
+    }).catch(() => {});
+  }
+
   const notifOn = localStorage.getItem('esp-notif') === 'on';
   document.getElementById('toggle-notif').classList.toggle('on', notifOn);
 
@@ -4350,6 +4540,16 @@ function showGramOverview() {
 
 // First: restore progress from IndexedDB if localStorage was cleared
 initProgress().then(async () => {
+  // Migration: Tim's alte hardcoded ID übernehmen
+  if (!SYNC_ID && Object.keys(getProgress()).length > 0) {
+    loginUser('tim');
+  }
+
+  if (!SYNC_ID) {
+    document.getElementById('welcome-overlay').style.display = '';
+    return;
+  }
+
   renderDecks();
   syncNow().catch(() => {}).then(() => renderDecks());
 
