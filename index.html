@@ -238,7 +238,8 @@ nav button .icon { font-size: 22px; }
   position: fixed; inset: 0; z-index: 200;
   background: var(--bg);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 24px; text-align: center;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + var(--safe-bottom));
+  text-align: center;
 }
 .welcome-overlay h1 { font-size: 32px; margin-bottom: 8px; }
 .welcome-overlay .sub { color: var(--text2); margin-bottom: 32px; font-size: 15px; }
@@ -708,7 +709,7 @@ nav button .icon { font-size: 22px; }
 
 <!-- ===== EINSTUFUNGSTEST ===== -->
 <div id="placement-overlay" style="display:none;position:fixed;inset:0;z-index:150;background:var(--bg);overflow-y:auto;">
-  <div style="padding:20px 16px 40px;max-width:420px;margin:0 auto;">
+  <div style="padding:calc(20px + env(safe-area-inset-top, 0px)) 16px calc(40px + var(--safe-bottom));max-width:420px;margin:0 auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <button onclick="placementStop()" style="background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;cursor:pointer;">✕ Beenden</button>
       <div style="font-size:14px;color:var(--text2);" id="placement-counter">0 / 0</div>
