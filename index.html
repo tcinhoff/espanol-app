@@ -632,6 +632,15 @@ nav button .icon { font-size: 22px; }
     <button onclick="syncNow().then(()=>renderSettings())" style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Jetzt syncen</button>
   </div>
 
+  <h2>Einstufungstest</h2>
+  <div class="setting-row">
+    <div>
+      <div class="label">Vorkenntnisse einstufen</div>
+      <div class="sublabel">Bekannte Vokabeln überspringen (MC-Schnelldurchlauf)</div>
+    </div>
+    <button onclick="startPlacement(false)" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">🎓 Start</button>
+  </div>
+
   <h2>Backup</h2>
   <div class="setting-row">
     <div>
@@ -681,6 +690,7 @@ nav button .icon { font-size: 22px; }
     <div class="sub">Merke dir diesen Code — du brauchst ihn um dich auf einem anderen Gerät anzumelden</div>
     <div class="welcome-code" id="welcome-pin"></div>
     <button class="welcome-btn" onclick="welcomeFinish()">Verstanden, weiter!</button>
+    <button class="welcome-btn secondary" onclick="welcomeStartPlacement()" style="margin-top:4px;">🎓 Ich kann schon etwas Spanisch</button>
   </div>
   <!-- Step 3: Bestehendes Gerät — Code eingeben -->
   <div id="welcome-step3" style="display:none">
@@ -693,6 +703,31 @@ nav button .icon { font-size: 22px; }
     <button class="welcome-btn" onclick="welcomeLink()">Verbinden</button>
     <div class="welcome-link" onclick="welcomeShowNew()">Ich bin neu hier</div>
     <div class="welcome-error" id="link-error"></div>
+  </div>
+</div>
+
+<!-- ===== EINSTUFUNGSTEST ===== -->
+<div id="placement-overlay" style="display:none;position:fixed;inset:0;z-index:150;background:var(--bg);overflow-y:auto;">
+  <div style="padding:20px 16px 40px;max-width:420px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <button onclick="placementStop()" style="background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;cursor:pointer;">✕ Beenden</button>
+      <div style="font-size:14px;color:var(--text2);" id="placement-counter">0 / 0</div>
+      <div style="font-size:14px;" id="placement-score">✅ 0</div>
+    </div>
+    <div style="height:4px;background:#ffffff10;border-radius:2px;margin-bottom:20px;">
+      <div id="placement-bar" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s;"></div>
+    </div>
+    <div class="quiz-box" id="placement-card">
+      <div class="direction" id="placement-dir">Español → Deutsch</div>
+      <div class="question" id="placement-q" style="margin-bottom:20px;"></div>
+      <div id="placement-opts" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+    <div id="placement-done" style="display:none;text-align:center;padding:40px 0;">
+      <div style="font-size:48px;margin-bottom:16px;">🎓</div>
+      <h2>Einstufung abgeschlossen!</h2>
+      <p id="placement-result" style="color:var(--text2);margin:12px 0 24px;"></p>
+      <button class="welcome-btn" onclick="placementFinish()">Weiter zur App</button>
+    </div>
   </div>
 </div>
 
@@ -2737,6 +2772,117 @@ async function welcomeFinish() {
   document.getElementById('welcome-overlay').style.display = 'none';
   await syncNow().catch(() => {});
   renderDecks();
+}
+
+// ---- Einstufungstest (Placement Test) ----
+let _placementCards = [];
+let _placementIdx = 0;
+let _placementCorrect = 0;
+let _placementFromWelcome = false;
+
+function buildPlacementCards() {
+  const cards = [];
+  DECKS.forEach(deck => {
+    if (deck.fixedDirection) return;
+    deck.cards.forEach((c, i) => {
+      cards.push({ es: c[0], de: c[1], deckId: deck.id, idx: i });
+    });
+  });
+  return cards.sort(() => Math.random() - 0.5);
+}
+
+function startPlacement(fromWelcome) {
+  _placementFromWelcome = fromWelcome;
+  _placementCards = buildPlacementCards();
+  _placementIdx = 0;
+  _placementCorrect = 0;
+  document.getElementById('placement-overlay').style.display = '';
+  document.getElementById('placement-card').style.display = '';
+  document.getElementById('placement-done').style.display = 'none';
+  showPlacementCard();
+}
+
+function welcomeStartPlacement() {
+  document.getElementById('welcome-overlay').style.display = 'none';
+  startPlacement(true);
+}
+
+function showPlacementCard() {
+  if (_placementIdx >= _placementCards.length) {
+    document.getElementById('placement-card').style.display = 'none';
+    document.getElementById('placement-done').style.display = '';
+    const total = _placementCards.length;
+    const pct = Math.round(_placementCorrect / total * 100);
+    document.getElementById('placement-result').textContent =
+      `${_placementCorrect} von ${total} gewusst (${pct}%). Die bekannten Vokabeln sind als gemeistert markiert.`;
+    return;
+  }
+
+  const card = _placementCards[_placementIdx];
+  const total = _placementCards.length;
+  document.getElementById('placement-counter').textContent = `${_placementIdx + 1} / ${total}`;
+  document.getElementById('placement-score').textContent = `✅ ${_placementCorrect}`;
+  document.getElementById('placement-bar').style.width = `${(_placementIdx / total) * 100}%`;
+
+  const showEsFirst = Math.random() > 0.5;
+  document.getElementById('placement-dir').textContent = showEsFirst ? 'Español → Deutsch' : 'Deutsch → Español';
+  document.getElementById('placement-q').textContent = showEsFirst ? card.es : card.de;
+
+  const correctAnswer = showEsFirst ? card.de : card.es;
+  const allAnswers = [];
+  DECKS.forEach(d => {
+    if (d.fixedDirection) return;
+    d.cards.forEach(c => {
+      const a = showEsFirst ? c[1] : c[0];
+      if (a !== correctAnswer && !allAnswers.includes(a)) allAnswers.push(a);
+    });
+  });
+  const wrongs = allAnswers.sort(() => Math.random() - 0.5).slice(0, 3);
+  const options = [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
+
+  const el = document.getElementById('placement-opts');
+  el.innerHTML = options.map((o, i) =>
+    `<button class="mc-option" onclick="placementAnswer(this, '${correctAnswer.replace(/'/g, "\\'")}')">${o}</button>`
+  ).join('');
+}
+
+function placementAnswer(btn, correct) {
+  const card = _placementCards[_placementIdx];
+  const isCorrect = btn.textContent === correct;
+  const btns = document.querySelectorAll('#placement-opts .mc-option');
+  btns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correct) b.classList.add('correct');
+  });
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    _placementCorrect++;
+    const progress = getProgress();
+    const review = getReview();
+    const key = card.deckId + '_' + card.idx;
+    progress[key] = 4;
+    review[key] = { l: 0, t: Date.now() };
+    touchProgressKey(key);
+    saveProgress(progress);
+    saveReview(review);
+  } else {
+    btn.classList.add('wrong');
+  }
+
+  setTimeout(() => { _placementIdx++; showPlacementCard(); }, 800);
+}
+
+function placementStop() {
+  document.getElementById('placement-overlay').style.display = 'none';
+  if (_placementFromWelcome) welcomeFinish();
+  else renderDecks();
+}
+
+function placementFinish() {
+  document.getElementById('placement-overlay').style.display = 'none';
+  if (_placementFromWelcome) welcomeFinish();
+  else { renderDecks(); renderSettings(); }
 }
 
 const _origSaveProgress = saveProgress;
