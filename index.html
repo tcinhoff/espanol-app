@@ -2475,16 +2475,20 @@ function mergeProgress(localP, localTs, remoteP, remoteTs) {
   const mergedTs = {};
   const allKeys = new Set([...Object.keys(localP), ...Object.keys(remoteP)]);
   allKeys.forEach(key => {
-    const lVal = localP[key] ?? -1;
-    const rVal = remoteP[key] ?? -1;
+    const lVal = localP[key] ?? 0;
+    const rVal = remoteP[key] ?? 0;
     const lTime = localTs[key] || 0;
     const rTime = remoteTs[key] || 0;
-    if (lTime >= rTime) {
-      merged[key] = lVal === -1 ? (rVal === -1 ? 0 : rVal) : lVal;
-      mergedTs[key] = lTime || rTime;
-    } else {
-      merged[key] = rVal === -1 ? (lVal === -1 ? 0 : lVal) : rVal;
+    if (lTime > rTime) {
+      merged[key] = lVal;
+      mergedTs[key] = lTime;
+    } else if (rTime > lTime) {
+      merged[key] = rVal;
       mergedTs[key] = rTime;
+    } else {
+      // Gleicher Timestamp (oder beide 0): höherer Stage gewinnt
+      merged[key] = Math.max(lVal, rVal);
+      mergedTs[key] = lTime || rTime;
     }
   });
   return { progress: merged, ts: mergedTs };
