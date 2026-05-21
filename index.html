@@ -2394,7 +2394,7 @@ async function initProgress() {
 }
 
 // ============================================================
-//  CLOUD SYNC (Supabase)
+//  CLOUD SYNC (Supabase) — mit Timestamp pro Karte
 // ============================================================
 const SUPABASE_URL = 'https://jtxyhuhdenhkxygderxk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0eHlodWhkZW5oa3h5Z2RlcnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDc0MDUsImV4cCI6MjA5NDg4MzQwNX0.IYlROv7KDZHGa-feOEPfPinkNl1qm5sELa29DxT1V20';
@@ -2402,6 +2402,22 @@ const SYNC_ID = 'tim';
 let _lastSyncAt = 0;
 let _syncTimer = null;
 let _syncStatus = 'idle';
+
+let _progressTsCache = null;
+function getProgressTs() {
+  if (_progressTsCache) return _progressTsCache;
+  _progressTsCache = JSON.parse(localStorage.getItem('esp-progress-ts') || '{}');
+  return _progressTsCache;
+}
+function saveProgressTs(ts) {
+  _progressTsCache = ts;
+  try { localStorage.setItem('esp-progress-ts', JSON.stringify(ts)); } catch {}
+}
+function touchProgressKey(key) {
+  const ts = getProgressTs();
+  ts[key] = Date.now();
+  saveProgressTs(ts);
+}
 
 function sbHeaders() {
   return {
@@ -2415,7 +2431,7 @@ function sbHeaders() {
 async function cloudLoad() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,updated_at`,
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,progress_ts,updated_at`,
       { headers: sbHeaders() }
     );
     if (!res.ok) throw new Error(res.status);
@@ -2428,12 +2444,13 @@ async function cloudLoad() {
   }
 }
 
-async function cloudSave(progress, review) {
+async function cloudSave(progress, review, progressTs) {
   try {
     const body = {
       id: SYNC_ID,
-      progress: progress,
-      review: review,
+      progress,
+      review,
+      progress_ts: progressTs,
       updated_at: new Date().toISOString(),
     };
     const res = await fetch(
@@ -2453,14 +2470,24 @@ async function cloudSave(progress, review) {
   }
 }
 
-function mergeProgress(local, remote) {
-  const merged = { ...local };
-  Object.keys(remote).forEach(key => {
-    if (!merged[key] || remote[key] > merged[key]) {
-      merged[key] = remote[key];
+function mergeProgress(localP, localTs, remoteP, remoteTs) {
+  const merged = {};
+  const mergedTs = {};
+  const allKeys = new Set([...Object.keys(localP), ...Object.keys(remoteP)]);
+  allKeys.forEach(key => {
+    const lVal = localP[key] ?? -1;
+    const rVal = remoteP[key] ?? -1;
+    const lTime = localTs[key] || 0;
+    const rTime = remoteTs[key] || 0;
+    if (lTime >= rTime) {
+      merged[key] = lVal === -1 ? (rVal === -1 ? 0 : rVal) : lVal;
+      mergedTs[key] = lTime || rTime;
+    } else {
+      merged[key] = rVal === -1 ? (lVal === -1 ? 0 : lVal) : rVal;
+      mergedTs[key] = rTime;
     }
   });
-  return merged;
+  return { progress: merged, ts: mergedTs };
 }
 
 function mergeReview(local, remote) {
@@ -2468,10 +2495,8 @@ function mergeReview(local, remote) {
   Object.keys(remote).forEach(key => {
     if (!merged[key]) {
       merged[key] = remote[key];
-    } else {
-      if (remote[key].t > merged[key].t) {
-        merged[key] = remote[key];
-      }
+    } else if (remote[key].t > merged[key].t) {
+      merged[key] = remote[key];
     }
   });
   return merged;
@@ -2482,26 +2507,31 @@ async function syncNow() {
   updateSyncUI();
 
   const cloud = await cloudLoad();
+  const localTs = getProgressTs();
+
   if (!cloud) {
-    await cloudSave(getProgress(), getReview());
+    await cloudSave(getProgress(), getReview(), localTs);
+    _syncStatus = 'synced';
+    updateSyncUI();
     return;
   }
 
   const localProgress = getProgress();
   const localReview = getReview();
-  const localUpdated = parseInt(localStorage.getItem('esp-sync-ts') || '0');
-  const cloudUpdated = new Date(cloud.updated_at).getTime();
 
-  const mergedProgress = mergeProgress(localProgress, cloud.progress || {});
+  const { progress: mergedProgress, ts: mergedTs } = mergeProgress(
+    localProgress, localTs,
+    cloud.progress || {}, cloud.progress_ts || {}
+  );
   const mergedReview = mergeReview(localReview, cloud.review || {});
 
   _progressCache = mergedProgress;
   saveProgress(mergedProgress);
+  saveProgressTs(mergedTs);
   _reviewCache = mergedReview;
   saveReview(mergedReview);
 
-  await cloudSave(mergedProgress, mergedReview);
-  localStorage.setItem('esp-sync-ts', String(Date.now()));
+  await cloudSave(mergedProgress, mergedReview, mergedTs);
   _syncStatus = 'synced';
   _lastSyncAt = Date.now();
   updateSyncUI();
@@ -2998,12 +3028,11 @@ function advanceCard(correct) {
       review[realKey] = { l: newL, t: Date.now() };
       saveReview(review);
     } else {
-      // Karte zurück ins normale System: Stage 2 (Flashcard), Review-Eintrag löschen
       delete review[realKey];
       saveReview(review);
       progress[realKey] = 2;
+      touchProgressKey(realKey);
       saveProgress(progress);
-      // Karte wieder anhängen für Retry in dieser Session
       if (deckIndex + 2 < deckCards.length) {
         deckCards.splice(deckIndex + 3, 0, { ...card });
       } else {
@@ -3019,14 +3048,12 @@ function advanceCard(correct) {
   if (correct) {
     const newStage = Math.min(cur + 1, 4);
     progress[key] = newStage;
-    // Wenn neu gemeistert: Review-Eintrag erstellen (in 1 Tag wieder fällig)
     if (cur < 4 && newStage === 4) {
       review[key] = { l: 0, t: Date.now() };
       saveReview(review);
     }
   } else {
-    progress[key] = Math.max(cur - 1, 1); // never below 1 once seen
-    // Re-add card later in this session for retry
+    progress[key] = Math.max(cur - 1, 1);
     if (deckIndex + 2 < deckCards.length) {
       deckCards.splice(deckIndex + 3, 0, { ...card, stage: Math.max(cur - 1, 1) });
     } else {
@@ -3034,6 +3061,7 @@ function advanceCard(correct) {
     }
   }
   card.stage = progress[key];
+  touchProgressKey(key);
   saveProgress(progress);
 }
 
