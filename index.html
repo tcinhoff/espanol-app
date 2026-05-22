@@ -2571,7 +2571,7 @@ function sbHeaders() {
 async function cloudLoad() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,progress_ts,hidden_decks,updated_at`,
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,progress_ts,updated_at`,
       { headers: sbHeaders() }
     );
     if (!res.ok) throw new Error(res.status);
@@ -2584,14 +2584,13 @@ async function cloudLoad() {
   }
 }
 
-async function cloudSave(progress, review, progressTs, hiddenDecks) {
+async function cloudSave(progress, review, progressTs) {
   try {
     const body = {
       id: SYNC_ID,
       progress,
       review,
       progress_ts: progressTs,
-      hidden_decks: hiddenDecks,
       updated_at: new Date().toISOString(),
     };
     const res = await fetch(
@@ -2647,16 +2646,6 @@ function mergeReview(local, remote) {
   return merged;
 }
 
-function mergeHiddenDecks(local, remote) {
-  const merged = { ...local };
-  Object.keys(remote).forEach(id => {
-    const l = merged[id];
-    const r = remote[id];
-    if (!l || (r && r.t > l.t)) merged[id] = r;
-  });
-  return merged;
-}
-
 async function syncNow() {
   if (!SYNC_ID) return;
   _syncStatus = 'syncing';
@@ -2664,10 +2653,9 @@ async function syncNow() {
 
   const cloud = await cloudLoad();
   const localTs = getProgressTs();
-  const localHidden = getHiddenDecksState();
 
   if (!cloud) {
-    await cloudSave(getProgress(), getReview(), localTs, localHidden);
+    await cloudSave(getProgress(), getReview(), localTs);
     _syncStatus = 'synced';
     updateSyncUI();
     return;
@@ -2680,18 +2668,17 @@ async function syncNow() {
     localProgress, localTs,
     cloud.progress || {}, cloud.progress_ts || {}
   );
+  // Hidden-Decks-Entries (__hidden__-Prefix) liegen ebenfalls in review und mergen
+  // dort über denselben Timestamp-Mechanismus mit
   const mergedReview = mergeReview(localReview, cloud.review || {});
-  const mergedHidden = mergeHiddenDecks(localHidden, cloud.hidden_decks || {});
 
   _progressCache = mergedProgress;
   saveProgress(mergedProgress);
   saveProgressTs(mergedTs);
   _reviewCache = mergedReview;
   saveReview(mergedReview);
-  // Direkt in localStorage schreiben — saveHiddenDecksState würde sonst erneut scheduleSyncSoon triggern
-  localStorage.setItem('esp-hidden-decks-state', JSON.stringify(mergedHidden));
 
-  await cloudSave(mergedProgress, mergedReview, mergedTs, mergedHidden);
+  await cloudSave(mergedProgress, mergedReview, mergedTs);
   _syncStatus = 'synced';
   _lastSyncAt = Date.now();
   updateSyncUI();
@@ -2740,7 +2727,7 @@ async function createUser(userId, displayName, pin) {
   try {
     const body = {
       id: userId, display_name: displayName, pin,
-      progress: {}, review: {}, progress_ts: {}, hidden_decks: {},
+      progress: {}, review: {}, progress_ts: {},
       updated_at: new Date().toISOString(),
     };
     const res = await fetch(
@@ -3028,39 +3015,66 @@ function saveReviewLimit() {
 }
 
 // ---- Hidden Decks ----
-// State-Format: { [deckId]: { h: 0|1, t: timestamp } } — pro Deck letzter Change-Timestamp
-// Beim Sync gewinnt der höhere Timestamp pro Deck (Last-Write-Wins per Deck).
-function getHiddenDecksState() {
-  const raw = localStorage.getItem('esp-hidden-decks-state');
-  if (raw) return JSON.parse(raw);
-  // Migration vom alten Array-Format
-  const old = JSON.parse(localStorage.getItem('esp-hidden-decks') || '[]');
-  const state = {};
-  if (old.length > 0) {
-    const now = Date.now();
-    old.forEach(id => { state[id] = { h: 1, t: now }; });
-    localStorage.setItem('esp-hidden-decks-state', JSON.stringify(state));
+// Storage: Hidden-State liegt als Spezial-Keys mit Prefix "__hidden__" im review-JSONB.
+// Vorteil: kein Schema-Change in Supabase nötig — mergeReview kümmert sich automatisch
+// um das Last-Write-Wins per Deck (gleicher { t: timestamp }-Mechanismus).
+// collectMasteredCards iteriert nur progress-Keys ("deckId_idx"), sieht __hidden__ nie.
+const HIDDEN_PREFIX = '__hidden__';
+
+function migrateHiddenDecksToReview() {
+  const oldState = localStorage.getItem('esp-hidden-decks-state');
+  const oldArr = localStorage.getItem('esp-hidden-decks');
+  if (!oldState && !oldArr) return;
+  const review = getReview();
+  if (oldState) {
+    const s = JSON.parse(oldState);
+    Object.keys(s).forEach(deckId => {
+      const key = HIDDEN_PREFIX + deckId;
+      const cur = review[key];
+      if (!cur || (s[deckId].t || 0) > (cur.t || 0)) {
+        review[key] = { h: s[deckId].h, t: s[deckId].t };
+      }
+    });
+    localStorage.removeItem('esp-hidden-decks-state');
   }
-  return state;
+  if (oldArr) {
+    const arr = JSON.parse(oldArr);
+    const now = Date.now();
+    arr.forEach(deckId => {
+      const key = HIDDEN_PREFIX + deckId;
+      if (!review[key]) review[key] = { h: 1, t: now };
+    });
+    localStorage.removeItem('esp-hidden-decks');
+  }
+  saveReview(review); // saveReview-Wrapper triggert scheduleSyncSoon
 }
-function saveHiddenDecksState(state) {
-  localStorage.setItem('esp-hidden-decks-state', JSON.stringify(state));
-  scheduleSyncSoon();
+
+function getHiddenDecksState() {
+  migrateHiddenDecksToReview();
+  const review = getReview();
+  const state = {};
+  Object.keys(review).forEach(key => {
+    if (key.startsWith(HIDDEN_PREFIX)) {
+      state[key.substring(HIDDEN_PREFIX.length)] = review[key];
+    }
+  });
+  return state;
 }
 function getHiddenDecks() {
   const state = getHiddenDecksState();
   return Object.keys(state).filter(id => state[id]?.h === 1);
 }
+function setHiddenDeckState(id, h) {
+  const review = getReview();
+  review[HIDDEN_PREFIX + id] = { h, t: Date.now() };
+  saveReview(review); // triggert scheduleSyncSoon via Wrapper
+}
 function hideDeck(id) {
-  const state = getHiddenDecksState();
-  state[id] = { h: 1, t: Date.now() };
-  saveHiddenDecksState(state);
+  setHiddenDeckState(id, 1);
   renderDecks();
 }
 function unhideDeck(id) {
-  const state = getHiddenDecksState();
-  state[id] = { h: 0, t: Date.now() };
-  saveHiddenDecksState(state);
+  setHiddenDeckState(id, 0);
   renderDecks();
 }
 
