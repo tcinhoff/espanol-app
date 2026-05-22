@@ -2571,7 +2571,7 @@ function sbHeaders() {
 async function cloudLoad() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,progress_ts,updated_at`,
+      `${SUPABASE_URL}/rest/v1/sync_data?id=eq.${SYNC_ID}&select=progress,review,progress_ts,hidden_decks,updated_at`,
       { headers: sbHeaders() }
     );
     if (!res.ok) throw new Error(res.status);
@@ -2584,13 +2584,14 @@ async function cloudLoad() {
   }
 }
 
-async function cloudSave(progress, review, progressTs) {
+async function cloudSave(progress, review, progressTs, hiddenDecks) {
   try {
     const body = {
       id: SYNC_ID,
       progress,
       review,
       progress_ts: progressTs,
+      hidden_decks: hiddenDecks,
       updated_at: new Date().toISOString(),
     };
     const res = await fetch(
@@ -2646,6 +2647,16 @@ function mergeReview(local, remote) {
   return merged;
 }
 
+function mergeHiddenDecks(local, remote) {
+  const merged = { ...local };
+  Object.keys(remote).forEach(id => {
+    const l = merged[id];
+    const r = remote[id];
+    if (!l || (r && r.t > l.t)) merged[id] = r;
+  });
+  return merged;
+}
+
 async function syncNow() {
   if (!SYNC_ID) return;
   _syncStatus = 'syncing';
@@ -2653,9 +2664,10 @@ async function syncNow() {
 
   const cloud = await cloudLoad();
   const localTs = getProgressTs();
+  const localHidden = getHiddenDecksState();
 
   if (!cloud) {
-    await cloudSave(getProgress(), getReview(), localTs);
+    await cloudSave(getProgress(), getReview(), localTs, localHidden);
     _syncStatus = 'synced';
     updateSyncUI();
     return;
@@ -2669,14 +2681,17 @@ async function syncNow() {
     cloud.progress || {}, cloud.progress_ts || {}
   );
   const mergedReview = mergeReview(localReview, cloud.review || {});
+  const mergedHidden = mergeHiddenDecks(localHidden, cloud.hidden_decks || {});
 
   _progressCache = mergedProgress;
   saveProgress(mergedProgress);
   saveProgressTs(mergedTs);
   _reviewCache = mergedReview;
   saveReview(mergedReview);
+  // Direkt in localStorage schreiben — saveHiddenDecksState würde sonst erneut scheduleSyncSoon triggern
+  localStorage.setItem('esp-hidden-decks-state', JSON.stringify(mergedHidden));
 
-  await cloudSave(mergedProgress, mergedReview, mergedTs);
+  await cloudSave(mergedProgress, mergedReview, mergedTs, mergedHidden);
   _syncStatus = 'synced';
   _lastSyncAt = Date.now();
   updateSyncUI();
@@ -2725,7 +2740,7 @@ async function createUser(userId, displayName, pin) {
   try {
     const body = {
       id: userId, display_name: displayName, pin,
-      progress: {}, review: {}, progress_ts: {},
+      progress: {}, review: {}, progress_ts: {}, hidden_decks: {},
       updated_at: new Date().toISOString(),
     };
     const res = await fetch(
@@ -3013,20 +3028,39 @@ function saveReviewLimit() {
 }
 
 // ---- Hidden Decks ----
-function getHiddenDecks() {
-  return JSON.parse(localStorage.getItem('esp-hidden-decks') || '[]');
+// State-Format: { [deckId]: { h: 0|1, t: timestamp } } — pro Deck letzter Change-Timestamp
+// Beim Sync gewinnt der höhere Timestamp pro Deck (Last-Write-Wins per Deck).
+function getHiddenDecksState() {
+  const raw = localStorage.getItem('esp-hidden-decks-state');
+  if (raw) return JSON.parse(raw);
+  // Migration vom alten Array-Format
+  const old = JSON.parse(localStorage.getItem('esp-hidden-decks') || '[]');
+  const state = {};
+  if (old.length > 0) {
+    const now = Date.now();
+    old.forEach(id => { state[id] = { h: 1, t: now }; });
+    localStorage.setItem('esp-hidden-decks-state', JSON.stringify(state));
+  }
+  return state;
 }
-function saveHiddenDecks(arr) {
-  localStorage.setItem('esp-hidden-decks', JSON.stringify(arr));
+function saveHiddenDecksState(state) {
+  localStorage.setItem('esp-hidden-decks-state', JSON.stringify(state));
+  scheduleSyncSoon();
+}
+function getHiddenDecks() {
+  const state = getHiddenDecksState();
+  return Object.keys(state).filter(id => state[id]?.h === 1);
 }
 function hideDeck(id) {
-  const h = getHiddenDecks();
-  if (!h.includes(id)) h.push(id);
-  saveHiddenDecks(h);
+  const state = getHiddenDecksState();
+  state[id] = { h: 1, t: Date.now() };
+  saveHiddenDecksState(state);
   renderDecks();
 }
 function unhideDeck(id) {
-  saveHiddenDecks(getHiddenDecks().filter(x => x !== id));
+  const state = getHiddenDecksState();
+  state[id] = { h: 0, t: Date.now() };
+  saveHiddenDecksState(state);
   renderDecks();
 }
 
@@ -3142,18 +3176,18 @@ function renderDecks() {
       : (mastered > 0 || inProgress > 0
         ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
         : `${d.cards.length} Karten — starte jetzt!`);
-    const opacity = pct === 100 ? 'opacity:.6;' : '';
+    const fade = pct === 100 ? 'opacity:.6;' : '';
     const bgClass = swipeAction === 'unhide' ? 'deck-swipe-bg unhide' : 'deck-swipe-bg';
     const bgLabel = swipeAction === 'unhide' ? '← Einblenden' : 'Ausblenden →';
     return `
       <div class="deck-swipe-wrapper" data-deck-id="${d.id}" data-swipe="${swipeAction}">
         <div class="${bgClass}">${bgLabel}</div>
-        <div class="deck-item" onclick="startDeck('${d.id}')" style="${opacity}">
-          <div class="info">
+        <div class="deck-item" onclick="startDeck('${d.id}')">
+          <div class="info" style="${fade}">
             <div class="name">${d.icon} ${d.name}</div>
             <div class="count">${sub}</div>
           </div>
-          <div class="progress-ring" style="border:3px solid ${color};color:${color}">${pct}%</div>
+          <div class="progress-ring" style="border:3px solid ${color};color:${color};${fade}">${pct}%</div>
         </div>
       </div>`;
   }
