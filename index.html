@@ -57,7 +57,7 @@ nav button.active { color: var(--accent); }
 nav button .icon { font-size: 22px; }
 
 /* ---- PAGES ---- */
-.page { display: none; padding: 20px 16px 90px; min-height: 100dvh; }
+.page { display: none; padding: calc(20px + env(safe-area-inset-top, 0px)) 16px calc(90px + var(--safe-bottom)); min-height: 100dvh; }
 .page.active { display: block; animation: fadeIn .25s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .page h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; letter-spacing: -0.5px; }
