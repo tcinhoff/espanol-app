@@ -265,6 +265,21 @@ nav button .icon { font-size: 22px; }
 .welcome-error { color: var(--red); font-size: 14px; margin-top: 8px; min-height: 20px; }
 .welcome-link { color: var(--accent); cursor: pointer; font-size: 14px; margin-top: 16px; }
 
+/* ---- SWIPE TO HIDE ---- */
+.deck-swipe-wrapper {
+  position: relative; overflow: hidden; border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+.deck-swipe-wrapper .deck-item { margin-bottom: 0; transition: transform .25s ease; }
+.deck-swipe-bg {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 20px;
+  background: #e94560; color: #fff; font-weight: 700; font-size: 14px;
+  border-radius: var(--radius);
+}
+.deck-swipe-bg.unhide { background: var(--green); color: #1a1a2e; justify-content: flex-start; padding-left: 20px; }
+
 /* ---- REVIEW BANNER ---- */
 .review-banner {
   background: linear-gradient(135deg, #8b5cf6 0%, #e94560 100%);
@@ -606,6 +621,21 @@ nav button .icon { font-size: 22px; }
       <option value="60">~1 Std</option>
       <option value="90" selected>~1.5 Std</option>
       <option value="120">~2 Std</option>
+    </select>
+  </div>
+
+  <h2>Wiederholung</h2>
+  <div class="setting-row">
+    <div>
+      <div class="label">Tageslimit</div>
+      <div class="sublabel">Max. Wiederholungen pro Tag</div>
+    </div>
+    <select id="review-limit-select" onchange="saveReviewLimit()" style="background:var(--bg);color:var(--text);border:1px solid #ffffff30;border-radius:8px;padding:6px 10px;font-size:14px;">
+      <option value="10">10</option>
+      <option value="20" selected>20</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+      <option value="999">Alle</option>
     </select>
   </div>
 
@@ -2973,21 +3003,80 @@ function showSpickOverview() {
 const STAGE_NAMES = ['Neu', 'Erkennen', 'Flashcard', 'Schreiben', 'Gemeistert'];
 const STAGE_CLASSES = ['', 's1', 's2', 's3', 's4'];
 
+// ---- Review Tageslimit ----
+function getReviewLimit() {
+  return parseInt(localStorage.getItem('esp-review-limit') || '20');
+}
+function saveReviewLimit() {
+  localStorage.setItem('esp-review-limit', document.getElementById('review-limit-select').value);
+  renderDecks();
+}
+
+// ---- Hidden Decks ----
+function getHiddenDecks() {
+  return JSON.parse(localStorage.getItem('esp-hidden-decks') || '[]');
+}
+function saveHiddenDecks(arr) {
+  localStorage.setItem('esp-hidden-decks', JSON.stringify(arr));
+}
+function hideDeck(id) {
+  const h = getHiddenDecks();
+  if (!h.includes(id)) h.push(id);
+  saveHiddenDecks(h);
+  renderDecks();
+}
+function unhideDeck(id) {
+  saveHiddenDecks(getHiddenDecks().filter(x => x !== id));
+  renderDecks();
+}
+
+// ---- Swipe Gesture ----
+function initSwipe(el, onSwipe) {
+  let startX = 0, currentX = 0, swiping = false;
+  const item = el.querySelector('.deck-item');
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; currentX = startX; swiping = true;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (!swiping) return;
+    currentX = e.touches[0].clientX;
+    const dx = currentX - startX;
+    const clamped = Math.max(-100, Math.min(100, dx));
+    item.style.transform = `translateX(${clamped}px)`;
+  }, { passive: true });
+  el.addEventListener('touchend', () => {
+    if (!swiping) return;
+    swiping = false;
+    const dx = currentX - startX;
+    if (Math.abs(dx) > 60) {
+      item.style.transform = `translateX(${dx < 0 ? '-120' : '120'}%)`;
+      setTimeout(() => onSwipe(dx < 0 ? 'left' : 'right'), 200);
+    } else {
+      item.style.transform = '';
+    }
+  });
+}
+
 function renderDecks() {
   const progress = getProgress();
   const el = document.getElementById('deck-overview');
+  const hiddenIds = getHiddenDecks();
 
-  // Review-Banner
+  // Review-Banner mit Tageslimit
   const { due, masteredCount, earliestNext } = collectMasteredCards();
+  const reviewLimit = getReviewLimit();
+  const dueCount = due.length;
+  const showCount = Math.min(dueCount, reviewLimit);
   let reviewHtml = '';
-  if (due.length > 0) {
+  if (dueCount > 0) {
+    const extra = dueCount > reviewLimit ? ` (${dueCount - reviewLimit} weitere morgen)` : '';
     reviewHtml = `
       <div class="review-banner" onclick="startReviewSession()">
         <div class="info">
           <div class="title">🔁 Wiederholung fällig</div>
-          <div class="sub">Halte gemeisterte Vokabeln im Langzeitgedächtnis</div>
+          <div class="sub">Heute ${showCount} Karten${extra}</div>
         </div>
-        <div class="badge">${due.length}</div>
+        <div class="badge">${showCount}</div>
       </div>`;
   } else if (masteredCount > 0 && earliestNext !== Infinity) {
     const wait = formatReviewWait(earliestNext);
@@ -3028,50 +3117,77 @@ function renderDecks() {
     return 0;
   });
 
-  // Split into active and completed
-  const active = deckStats.filter(s => s.pct < 100);
-  const completed = deckStats.filter(s => s.pct === 100);
+  // Split into active, completed, hidden
+  const active = deckStats.filter(s => s.pct < 100 && !hiddenIds.includes(s.deck.id));
+  const completed = deckStats.filter(s => s.pct === 100 && !hiddenIds.includes(s.deck.id));
+  const hidden = deckStats.filter(s => hiddenIds.includes(s.deck.id));
 
   let html = reviewHtml;
 
-  // Active decks
-  html += active.map(({ deck: d, mastered, inProgress, pct }) => {
-    const color = pct > 30 ? 'var(--orange)' : 'var(--accent)';
-    const sub = mastered > 0 || inProgress > 0
-      ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
-      : `${d.cards.length} Karten — starte jetzt!`;
+  function deckCard(d, mastered, inProgress, pct, swipeAction) {
+    const color = pct === 100 ? 'var(--green)' : (pct > 30 ? 'var(--orange)' : 'var(--accent)');
+    const sub = pct === 100 ? `${d.cards.length} Karten — zur Wiederholung`
+      : (mastered > 0 || inProgress > 0
+        ? `${mastered} gemeistert · ${inProgress} am Lernen · ${d.cards.length - mastered - inProgress} neu`
+        : `${d.cards.length} Karten — starte jetzt!`);
+    const opacity = pct === 100 ? 'opacity:.6;' : '';
+    const bgClass = swipeAction === 'unhide' ? 'deck-swipe-bg unhide' : 'deck-swipe-bg';
+    const bgLabel = swipeAction === 'unhide' ? '← Einblenden' : 'Ausblenden →';
     return `
-      <div class="deck-item" onclick="startDeck('${d.id}')">
-        <div class="info">
-          <div class="name">${d.icon} ${d.name}</div>
-          <div class="count">${sub}</div>
+      <div class="deck-swipe-wrapper" data-deck-id="${d.id}" data-swipe="${swipeAction}">
+        <div class="${bgClass}">${bgLabel}</div>
+        <div class="deck-item" onclick="startDeck('${d.id}')" style="${opacity}">
+          <div class="info">
+            <div class="name">${d.icon} ${d.name}</div>
+            <div class="count">${sub}</div>
+          </div>
+          <div class="progress-ring" style="border:3px solid ${color};color:${color}">${pct}%</div>
         </div>
-        <div class="progress-ring" style="border:3px solid ${color};color:${color}">${pct}%</div>
       </div>`;
-  }).join('');
+  }
+
+  // Active decks
+  html += active.map(s => deckCard(s.deck, s.mastered, s.inProgress, s.pct, 'hide')).join('');
 
   // Completed decks (collapsible)
   if (completed.length > 0) {
     html += `
       <div style="margin-top:16px;">
-        <button onclick="document.getElementById('completed-decks').style.display = document.getElementById('completed-decks').style.display === 'none' ? 'flex' : 'none'; this.textContent = this.textContent.includes('▸') ? '▾ Gemeistert (${completed.length})' : '▸ Gemeistert (${completed.length})';"
+        <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent.includes('▸') ? '▾ Gemeistert (${completed.length})' : '▸ Gemeistert (${completed.length})';"
           style="background:none;border:none;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
           ▸ Gemeistert (${completed.length})
         </button>
-        <div id="completed-decks" class="deck-grid" style="display:none;margin-top:8px;">
-          ${completed.map(({ deck: d }) => `
-            <div class="deck-item" onclick="startDeck('${d.id}')" style="opacity:.6;">
-              <div class="info">
-                <div class="name">${d.icon} ${d.name}</div>
-                <div class="count">${d.cards.length} Karten — zur Wiederholung</div>
-              </div>
-              <div class="progress-ring" style="border:3px solid var(--green);color:var(--green)">100%</div>
-            </div>`).join('')}
+        <div style="display:none;">
+          ${completed.map(s => deckCard(s.deck, s.mastered, s.inProgress, s.pct, 'hide')).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Hidden decks (collapsible)
+  if (hidden.length > 0) {
+    html += `
+      <div style="margin-top:16px;">
+        <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent.includes('▸') ? '▾ Ausgeblendet (${hidden.length})' : '▸ Ausgeblendet (${hidden.length})';"
+          style="background:none;border:none;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+          ▸ Ausgeblendet (${hidden.length})
+        </button>
+        <div style="display:none;">
+          ${hidden.map(s => deckCard(s.deck, s.mastered, s.inProgress, s.pct, 'unhide')).join('')}
         </div>
       </div>`;
   }
 
   el.innerHTML = html;
+
+  // Attach swipe gestures
+  el.querySelectorAll('.deck-swipe-wrapper').forEach(wrapper => {
+    const deckId = wrapper.dataset.deckId;
+    const action = wrapper.dataset.swipe;
+    initSwipe(wrapper, dir => {
+      if (action === 'hide' && dir === 'left') hideDeck(deckId);
+      else if (action === 'unhide' && dir === 'right') unhideDeck(deckId);
+    });
+  });
 }
 
 function startDeck(id) {
@@ -3433,10 +3549,10 @@ function startReviewSession() {
     es: c.es, de: c.de, idx: c.idx, deckId: c.deckId,
     stage: 2, // immer Flashcard im Review
   }));
-  // Mischen
+  // Mischen und auf Tageslimit begrenzen
   deckCards.sort(() => Math.random() - 0.5);
-  // Auf max 20 begrenzen pro Session (Tim soll Erfolg sehen)
-  if (deckCards.length > 20) deckCards = deckCards.slice(0, 20);
+  const limit = getReviewLimit();
+  if (deckCards.length > limit) deckCards = deckCards.slice(0, limit);
 
   deckIndex = 0;
   sessionCorrect = 0;
@@ -3866,6 +3982,9 @@ function renderSettings() {
 
   const freq = localStorage.getItem('esp-freq') || '90';
   document.getElementById('freq-select').value = freq;
+
+  const rlimit = localStorage.getItem('esp-review-limit') || '20';
+  document.getElementById('review-limit-select').value = rlimit;
 
   // Streak
   const last = localStorage.getItem('esp-last-quiz');
